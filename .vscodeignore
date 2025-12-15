@@ -1,0 +1,24 @@
+# Source files
+src/**
+.vscode/**
+.vscode-test/**
+
+# Build config
+tsconfig.json
+.eslintrc.json
+esbuild.js
+
+# Git
+.gitignore
+.gitattributes
+
+# Dev dependencies
+node_modules/**
+!node_modules/@azure/**
+
+# Documentation
+CHANGELOG.md
+
+# Misc
+**/*.map
+**/.DS_Store
