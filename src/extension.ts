@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { ConnectionsProvider } from './providers/ConnectionsProvider';
+import { QueueMessagesPanel } from './providers/QueueMessagesPanel';
+import { QueueTreeItem } from './models/Queue';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('BusDriver extension is now active');
@@ -35,12 +37,46 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    const showQueueMessagesCommand = vscode.commands.registerCommand(
+        'busdriver.showQueueMessages',
+        async (item: QueueTreeItem) => {
+            const connectionString = await connectionsProvider.getConnectionString(item.queue.connectionId);
+            if (connectionString) {
+                await QueueMessagesPanel.createOrShow(
+                    context.extensionUri,
+                    item.queue,
+                    connectionString
+                );
+            } else {
+                vscode.window.showErrorMessage('Connection string not found');
+            }
+        }
+    );
+
+    // Handle double-click on queue items
+    treeView.onDidChangeSelection(async (e) => {
+        if (e.selection.length > 0) {
+            const selected = e.selection[0];
+            if (selected instanceof QueueTreeItem) {
+                const connectionString = await connectionsProvider.getConnectionString(selected.queue.connectionId);
+                if (connectionString) {
+                    await QueueMessagesPanel.createOrShow(
+                        context.extensionUri,
+                        selected.queue,
+                        connectionString
+                    );
+                }
+            }
+        }
+    });
+
     // Add disposables to context
     context.subscriptions.push(
         treeView,
         addConnectionCommand,
         refreshCommand,
-        deleteConnectionCommand
+        deleteConnectionCommand,
+        showQueueMessagesCommand
     );
 }
 
