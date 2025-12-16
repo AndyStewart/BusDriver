@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ConnectionsProvider } from './providers/ConnectionsProvider';
-import { QueueMessagesPanel } from './providers/QueueMessagesPanel';
+import { QueueMessagesPanel, MessageData } from './providers/QueueMessagesPanel';
 import { QueueTreeItem } from './models/Queue';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -11,7 +11,8 @@ export function activate(context: vscode.ExtensionContext) {
     // Register the tree view
     const treeView = vscode.window.createTreeView('busdriver.connections', {
         treeDataProvider: connectionsProvider,
-        showCollapseAll: false
+        showCollapseAll: false,
+        dragAndDropController: connectionsProvider
     });
 
     // Register commands
@@ -53,6 +54,34 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    const moveMessageToQueueCommand = vscode.commands.registerCommand(
+        'busdriver.moveMessageToQueue',
+        async (messageData: MessageData) => {
+            // Get all available queues
+            const allQueues = await connectionsProvider.getAllQueues();
+
+            if (allQueues.length === 0) {
+                vscode.window.showErrorMessage('No queues available');
+                return;
+            }
+
+            // Show quick pick to select target queue
+            const items = allQueues.map(q => ({
+                label: q.queue.name,
+                description: q.connection.name,
+                queue: q.queue
+            }));
+
+            const selected = await vscode.window.showQuickPick(items, {
+                placeHolder: 'Select target queue to move message to'
+            });
+
+            if (selected) {
+                await connectionsProvider.moveMessageToQueue(messageData, selected.queue);
+            }
+        }
+    );
+
     // Handle double-click on queue items
     treeView.onDidChangeSelection(async (e) => {
         if (e.selection.length > 0) {
@@ -76,7 +105,8 @@ export function activate(context: vscode.ExtensionContext) {
         addConnectionCommand,
         refreshCommand,
         deleteConnectionCommand,
-        showQueueMessagesCommand
+        showQueueMessagesCommand,
+        moveMessageToQueueCommand
     );
 }
 

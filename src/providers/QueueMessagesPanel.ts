@@ -2,8 +2,20 @@ import * as vscode from 'vscode';
 import { ServiceBusClient, ServiceBusReceivedMessage } from '@azure/service-bus';
 import { Queue } from '../models/Queue';
 
+export interface MessageData {
+    sequenceNumber: string;
+    messageId: string;
+    body: string;
+    properties: Record<string, unknown>;
+    enqueuedTime: string;
+    deliveryCount: number;
+    sourceQueue?: Queue;
+    sourceConnectionString?: string;
+}
+
 export class QueueMessagesPanel {
     public static currentPanel: QueueMessagesPanel | undefined;
+    public static pendingDragMessage: MessageData | MessageData[] | undefined;
     private readonly _panel: vscode.WebviewPanel;
     private _disposables: vscode.Disposable[] = [];
 
@@ -24,11 +36,31 @@ export class QueueMessagesPanel {
 
         // Handle messages from the webview
         this._panel.webview.onDidReceiveMessage(
-            message => {
+            async message => {
                 switch (message.command) {
                     case 'refresh':
                         this._update();
                         return;
+                    case 'removeMessage':
+                        // Message was successfully moved, refresh the view
+                        this._update();
+                        return;
+                    case 'startDrag':
+                        // Store the message data for drag operation
+                        QueueMessagesPanel.pendingDragMessage = message.data;
+                        console.log('Stored pending drag message:', message.data.messageId);
+                        return;
+                    case 'moveToQueue': {
+                        // User wants to move message(s) to another queue
+                        // Add source queue information to each message
+                        const messages = Array.isArray(message.data) ? message.data : [message.data];
+                        messages.forEach((msg: MessageData) => {
+                            msg.sourceQueue = this.queue;
+                            msg.sourceConnectionString = this.connectionString;
+                        });
+                        await vscode.commands.executeCommand('busdriver.moveMessageToQueue', messages);
+                        return;
+                    }
                 }
             },
             null,
@@ -87,6 +119,13 @@ export class QueueMessagesPanel {
         }
     }
 
+    public notifyMessageRemoved(sequenceNumber: string): void {
+        this._panel.webview.postMessage({
+            command: 'removeMessage',
+            sequenceNumber: sequenceNumber
+        });
+    }
+
     private async _update() {
         this._panel.title = `Queue: ${this.queue.name}`;
         this._panel.webview.html = await this._getHtmlForWebview();
@@ -95,14 +134,30 @@ export class QueueMessagesPanel {
     private async _getHtmlForWebview(): Promise<string> {
         try {
             const messages = await this._peekMessages();
-            const messagesJson = JSON.stringify(messages.map(msg => ({
-                sequenceNumber: msg.sequenceNumber?.toString() || 'N/A',
-                messageId: msg.messageId?.toString() || 'N/A',
-                enqueuedTime: msg.enqueuedTimeUtc ? new Date(msg.enqueuedTimeUtc).toLocaleString() : 'N/A',
-                deliveryCount: msg.deliveryCount || 0,
-                body: typeof msg.body === 'string' ? msg.body : JSON.stringify(msg.body, null, 2),
-                properties: msg.applicationProperties || {}
-            })));
+            const messagesJson = JSON.stringify(messages.map(msg => {
+                let bodyContent: string;
+                if (typeof msg.body === 'string') {
+                    bodyContent = msg.body;
+                } else if (Buffer.isBuffer(msg.body)) {
+                    try {
+                        const parsed = JSON.parse(msg.body.toString().trim());
+                        bodyContent = JSON.stringify(parsed, null, 2);
+                    } catch {
+                        bodyContent = msg.body.toString();
+                    }
+                } else {
+                    bodyContent = JSON.stringify(msg.body, null, 2);
+                }
+
+                return {
+                    sequenceNumber: msg.sequenceNumber?.toString() || 'N/A',
+                    messageId: msg.messageId?.toString() || 'N/A',
+                    enqueuedTime: msg.enqueuedTimeUtc ? new Date(msg.enqueuedTimeUtc).toLocaleString() : 'N/A',
+                    deliveryCount: msg.deliveryCount || 0,
+                    body: bodyContent,
+                    properties: msg.applicationProperties || {}
+                };
+            }));
 
             return `<!DOCTYPE html>
             <html lang="en">
@@ -202,6 +257,12 @@ export class QueueMessagesPanel {
                     tbody tr {
                         cursor: pointer;
                     }
+                    tbody tr[draggable="true"] {
+                        cursor: grab;
+                    }
+                    tbody tr[draggable="true"]:active {
+                        cursor: grabbing;
+                    }
                     tbody tr:hover {
                         background-color: var(--vscode-list-hoverBackground);
                     }
@@ -297,6 +358,18 @@ export class QueueMessagesPanel {
                         padding: 20px;
                         color: var(--vscode-descriptionForeground);
                     }
+                    .move-button {
+                        background-color: var(--vscode-button-secondaryBackground);
+                        color: var(--vscode-button-secondaryForeground);
+                        margin-left: 8px;
+                    }
+                    .move-button:hover {
+                        background-color: var(--vscode-button-secondaryHoverBackground);
+                    }
+                    .move-button:disabled {
+                        opacity: 0.5;
+                        cursor: not-allowed;
+                    }
                 </style>
             </head>
             <body>
@@ -305,7 +378,10 @@ export class QueueMessagesPanel {
                         <h1>Queue: ${this.queue.name}</h1>
                         <span class="message-count">${messages.length} message(s) peeked</span>
                     </div>
-                    <button onclick="refresh()">Refresh</button>
+                    <div>
+                        <button id="moveButton" class="move-button" onclick="moveSelectedMessage()" disabled>Move to Queue...</button>
+                        <button onclick="refresh()">Refresh</button>
+                    </div>
                 </div>
                 <div class="grid-container" id="gridContainer">
                     ${this._generateMessageTable(messages)}
@@ -326,7 +402,8 @@ export class QueueMessagesPanel {
                 <script>
                     const vscode = acquireVsCodeApi();
                     const messages = ${messagesJson};
-                    let selectedRow = null;
+                    let selectedRows = new Set();
+                    let lastSelectedIndex = null;
 
                     function refresh() {
                         vscode.postMessage({ command: 'refresh' });
@@ -385,36 +462,78 @@ export class QueueMessagesPanel {
                         document.getElementById(tabName + 'Tab').classList.add('active');
                     }
 
-                    function selectMessage(index) {
+                    function selectMessage(index, event) {
                         const message = messages[index];
+                        const rows = document.querySelectorAll('tbody tr');
                         
-                        // Update selected row
-                        if (selectedRow !== null) {
-                            document.querySelectorAll('tbody tr')[selectedRow].classList.remove('selected');
-                        }
-                        selectedRow = index;
-                        document.querySelectorAll('tbody tr')[index].classList.add('selected');
-
-                        // Show details container and splitter
-                        document.getElementById('detailsContainer').classList.add('visible');
-                        document.getElementById('splitter').classList.add('visible');
-
-                        // Update body content
-                        document.getElementById('bodyContent').textContent = message.body;
-
-                        // Update properties content
-                        const propertiesContent = document.getElementById('propertiesContent');
-                        const propEntries = Object.entries(message.properties);
-                        
-                        if (propEntries.length === 0) {
-                            propertiesContent.innerHTML = '<div class="no-selection">No application properties</div>';
+                        // Handle multi-selection with Ctrl/Cmd+click or Shift+click
+                        if (event && (event.ctrlKey || event.metaKey)) {
+                            // Ctrl/Cmd+click: toggle individual selection
+                            if (selectedRows.has(index)) {
+                                selectedRows.delete(index);
+                                rows[index].classList.remove('selected');
+                            } else {
+                                selectedRows.add(index);
+                                rows[index].classList.add('selected');
+                            }
+                            lastSelectedIndex = index;
+                        } else if (event && event.shiftKey && lastSelectedIndex !== null) {
+                            // Shift+click: select range
+                            const start = Math.min(lastSelectedIndex, index);
+                            const end = Math.max(lastSelectedIndex, index);
+                            for (let i = start; i <= end; i++) {
+                                selectedRows.add(i);
+                                rows[i].classList.add('selected');
+                            }
                         } else {
-                            let html = '<table class="properties-table">';
-                            propEntries.forEach(([key, value]) => {
-                                html += '<tr><td>' + escapeHtml(key) + '</td><td>' + escapeHtml(String(value)) + '</td></tr>';
-                            });
-                            html += '</table>';
-                            propertiesContent.innerHTML = html;
+                            // Regular click: select single, clear others
+                            selectedRows.forEach(i => rows[i].classList.remove('selected'));
+                            selectedRows.clear();
+                            selectedRows.add(index);
+                            rows[index].classList.add('selected');
+                            lastSelectedIndex = index;
+                        }
+
+                        // Update move button state and text
+                        const moveButton = document.getElementById('moveButton');
+                        if (selectedRows.size > 0) {
+                            moveButton.disabled = false;
+                            if (selectedRows.size === 1) {
+                                moveButton.textContent = 'Move to Queue...';
+                            } else {
+                                moveButton.textContent = 'Move ' + selectedRows.size + ' Messages to Queue...';
+                            }
+                        } else {
+                            moveButton.disabled = true;
+                            moveButton.textContent = 'Move to Queue...';
+                        }
+
+                        // Show details for the last selected message (or first if clicking already selected)
+                        const displayIndex = selectedRows.has(index) ? index : Array.from(selectedRows)[0];
+                        if (displayIndex !== undefined) {
+                            const displayMessage = messages[displayIndex];
+                            
+                            // Show details container and splitter
+                            document.getElementById('detailsContainer').classList.add('visible');
+                            document.getElementById('splitter').classList.add('visible');
+
+                            // Update body content
+                            document.getElementById('bodyContent').textContent = displayMessage.body;
+
+                            // Update properties content
+                            const propertiesContent = document.getElementById('propertiesContent');
+                            const propEntries = Object.entries(displayMessage.properties);
+                            
+                            if (propEntries.length === 0) {
+                                propertiesContent.innerHTML = '<div class="no-selection">No application properties</div>';
+                            } else {
+                                let html = '<table class="properties-table">';
+                                propEntries.forEach(([key, value]) => {
+                                    html += '<tr><td>' + escapeHtml(key) + '</td><td>' + escapeHtml(String(value)) + '</td></tr>';
+                                });
+                                html += '</table>';
+                                propertiesContent.innerHTML = html;
+                            }
                         }
                     }
 
@@ -427,11 +546,87 @@ export class QueueMessagesPanel {
                             .replace(/'/g, "&#039;");
                     }
 
-                    // Add click handlers to table rows
+                    function moveSelectedMessage() {
+                        if (selectedRows.size === 0) {
+                            return;
+                        }
+
+                        // Collect all selected messages
+                        const selectedMessages = Array.from(selectedRows).map(index => {
+                            const message = messages[index];
+                            return {
+                                sequenceNumber: message.sequenceNumber,
+                                messageId: message.messageId,
+                                body: message.body,
+                                properties: message.properties,
+                                enqueuedTime: message.enqueuedTime,
+                                deliveryCount: message.deliveryCount
+                            };
+                        });
+
+                        vscode.postMessage({
+                            command: 'moveToQueue',
+                            data: selectedMessages
+                        });
+                    }
+
+                    // Drag and drop handlers
+                    function handleDragStart(event, index) {
+                        // If dragging a selected row, drag all selected messages
+                        // Otherwise, drag just the single row being dragged
+                        let messagesToDrag;
+                        
+                        if (selectedRows.has(index)) {
+                            // Drag all selected messages
+                            messagesToDrag = Array.from(selectedRows).map(i => {
+                                const msg = messages[i];
+                                return {
+                                    sequenceNumber: msg.sequenceNumber,
+                                    messageId: msg.messageId,
+                                    body: msg.body,
+                                    properties: msg.properties,
+                                    enqueuedTime: msg.enqueuedTime,
+                                    deliveryCount: msg.deliveryCount
+                                };
+                            });
+                        } else {
+                            // Drag single unselected message
+                            const msg = messages[index];
+                            messagesToDrag = [{
+                                sequenceNumber: msg.sequenceNumber,
+                                messageId: msg.messageId,
+                                body: msg.body,
+                                properties: msg.properties,
+                                enqueuedTime: msg.enqueuedTime,
+                                deliveryCount: msg.deliveryCount
+                            }];
+                        }
+                        
+                        // Notify extension about drag start so it can store the data
+                        vscode.postMessage({
+                            command: 'startDrag',
+                            data: messagesToDrag
+                        });
+                        
+                        const dragDataJson = JSON.stringify(messagesToDrag);
+                        
+                        // Set data with special URI format that VS Code can understand
+                        const uri = 'busdriver-message:' + encodeURIComponent(dragDataJson);
+                        event.dataTransfer.setData('text/uri-list', uri);
+                        event.dataTransfer.setData('text/plain', dragDataJson);
+                        event.dataTransfer.effectAllowed = 'copy';
+                        
+                        const count = messagesToDrag.length;
+                        console.log('Drag started with ' + count + ' message(s)');
+                    }
+
+                    // Add click and drag handlers to table rows
                     document.addEventListener('DOMContentLoaded', () => {
                         const rows = document.querySelectorAll('tbody tr');
                         rows.forEach((row, index) => {
-                            row.addEventListener('click', () => selectMessage(index));
+                            row.addEventListener('click', (e) => selectMessage(index, e));
+                            row.setAttribute('draggable', 'true');
+                            row.addEventListener('dragstart', (e) => handleDragStart(e, index));
                         });
                     });
                 </script>
