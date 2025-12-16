@@ -277,6 +277,96 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         this.refresh();
     }
 
+    async deleteMessages(messageData: MessageData | MessageData[]): Promise<void> {
+        // Normalize to array for consistent processing
+        const messages = Array.isArray(messageData) ? messageData : [messageData];
+        const messageCount = messages.length;
+        const isMultiple = messageCount > 1;
+
+        // Verify all messages have source queue and connection string
+        const firstMessage = messages[0];
+        if (!firstMessage.sourceQueue || !firstMessage.sourceConnectionString) {
+            vscode.window.showErrorMessage('Cannot delete message: source queue information missing');
+            return;
+        }
+
+        const queueName = firstMessage.sourceQueue.name;
+
+        const results = {
+            successful: [] as MessageData[],
+            failed: [] as { message: MessageData, error: string }[]
+        };
+
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: isMultiple ? `Deleting ${messageCount} messages...` : `Deleting message...`,
+            cancellable: false
+        }, async (progress) => {
+            let processed = 0;
+
+            for (const msg of messages) {
+                try {
+                    if (!msg.sourceConnectionString) {
+                        throw new Error('Connection string missing');
+                    }
+
+                    // Delete from source queue
+                    await this.deleteMessageFromQueue(
+                        queueName,
+                        msg.sourceConnectionString,
+                        msg.sequenceNumber
+                    );
+
+                    results.successful.push(msg);
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    results.failed.push({ message: msg, error: errorMessage });
+                }
+
+                processed++;
+
+                // Report progress for 10+ messages
+                if (messageCount >= 10) {
+                    const percentage = Math.round((processed / messageCount) * 100);
+                    progress.report({
+                        increment: (1 / messageCount) * 100,
+                        message: `${processed}/${messageCount} (${percentage}%)`
+                    });
+                }
+            }
+        });
+
+        // Show results notification
+        if (results.failed.length === 0) {
+            // All successful
+            const msg = isMultiple
+                ? `Successfully deleted ${messageCount} messages from ${queueName}`
+                : `Message deleted from ${queueName}`;
+            vscode.window.showInformationMessage(msg);
+        } else if (results.successful.length === 0) {
+            // All failed
+            const failedIds = results.failed.map(f => f.message.messageId).join(', ');
+            vscode.window.showErrorMessage(
+                `Failed to delete ${messageCount} message(s) from ${queueName}. IDs: ${failedIds}`
+            );
+        } else {
+            // Partial success
+            const failedIds = results.failed.map(f => `${f.message.messageId} (${f.error})`).join(', ');
+            vscode.window.showWarningMessage(
+                `Deleted ${results.successful.length} of ${messageCount} messages from ${queueName}. ` +
+                `Failed: ${failedIds}`
+            );
+        }
+
+        // Notify webview to refresh and show updated message list
+        if (QueueMessagesPanel.currentPanel && results.successful.length > 0) {
+            await QueueMessagesPanel.currentPanel.refreshView();
+        }
+
+        // Refresh tree to update message counts
+        this.refresh();
+    }
+
     private async getQueues(connection: Connection): Promise<QueueTreeItem[]> {
         try {
             const connectionString = await this.getConnectionString(connection.id);

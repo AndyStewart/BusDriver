@@ -61,6 +61,17 @@ export class QueueMessagesPanel {
                         await vscode.commands.executeCommand('busdriver.moveMessageToQueue', messages);
                         return;
                     }
+                    case 'deleteMessages': {
+                        // User wants to delete message(s)
+                        // Add source queue information to each message
+                        const messages = Array.isArray(message.data) ? message.data : [message.data];
+                        messages.forEach((msg: MessageData) => {
+                            msg.sourceQueue = this.queue;
+                            msg.sourceConnectionString = this.connectionString;
+                        });
+                        await vscode.commands.executeCommand('busdriver.deleteMessages', messages);
+                        return;
+                    }
                 }
             },
             null,
@@ -124,6 +135,10 @@ export class QueueMessagesPanel {
             command: 'removeMessage',
             sequenceNumber: sequenceNumber
         });
+    }
+
+    public async refreshView(): Promise<void> {
+        await this._update();
     }
 
     private async _update() {
@@ -370,6 +385,18 @@ export class QueueMessagesPanel {
                         opacity: 0.5;
                         cursor: not-allowed;
                     }
+                    .delete-button {
+                        background-color: var(--vscode-errorForeground);
+                        color: var(--vscode-editor-background);
+                        margin-left: 8px;
+                    }
+                    .delete-button:hover {
+                        opacity: 0.8;
+                    }
+                    .delete-button:disabled {
+                        opacity: 0.5;
+                        cursor: not-allowed;
+                    }
                 </style>
             </head>
             <body>
@@ -379,6 +406,7 @@ export class QueueMessagesPanel {
                         <span class="message-count">${messages.length} message(s) peeked</span>
                     </div>
                     <div>
+                        <button id="deleteButton" class="delete-button" onclick="deleteSelectedMessages()" disabled>Delete Message...</button>
                         <button id="moveButton" class="move-button" onclick="moveSelectedMessage()" disabled>Move to Queue...</button>
                         <button onclick="refresh()">Refresh</button>
                     </div>
@@ -494,18 +522,24 @@ export class QueueMessagesPanel {
                             lastSelectedIndex = index;
                         }
 
-                        // Update move button state and text
+                        // Update move and delete button states and text
                         const moveButton = document.getElementById('moveButton');
+                        const deleteButton = document.getElementById('deleteButton');
                         if (selectedRows.size > 0) {
                             moveButton.disabled = false;
+                            deleteButton.disabled = false;
                             if (selectedRows.size === 1) {
                                 moveButton.textContent = 'Move to Queue...';
+                                deleteButton.textContent = 'Delete Message...';
                             } else {
                                 moveButton.textContent = 'Move ' + selectedRows.size + ' Messages to Queue...';
+                                deleteButton.textContent = 'Delete ' + selectedRows.size + ' Messages...';
                             }
                         } else {
                             moveButton.disabled = true;
+                            deleteButton.disabled = true;
                             moveButton.textContent = 'Move to Queue...';
+                            deleteButton.textContent = 'Delete Message...';
                         }
 
                         // Show details for the last selected message (or first if clicking already selected)
@@ -566,6 +600,30 @@ export class QueueMessagesPanel {
 
                         vscode.postMessage({
                             command: 'moveToQueue',
+                            data: selectedMessages
+                        });
+                    }
+
+                    function deleteSelectedMessages() {
+                        if (selectedRows.size === 0) {
+                            return;
+                        }
+
+                        // Collect all selected messages
+                        const selectedMessages = Array.from(selectedRows).map(index => {
+                            const message = messages[index];
+                            return {
+                                sequenceNumber: message.sequenceNumber,
+                                messageId: message.messageId,
+                                body: message.body,
+                                properties: message.properties,
+                                enqueuedTime: message.enqueuedTime,
+                                deliveryCount: message.deliveryCount
+                            };
+                        });
+
+                        vscode.postMessage({
+                            command: 'deleteMessages',
                             data: selectedMessages
                         });
                     }

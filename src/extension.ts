@@ -82,6 +82,26 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    const deleteMessagesCommand = vscode.commands.registerCommand(
+        'busdriver.deleteMessages',
+        async (messageData: MessageData | MessageData[]) => {
+            const messages = Array.isArray(messageData) ? messageData : [messageData];
+            const messageCount = messages.length;
+
+            const confirmation = await vscode.window.showWarningMessage(
+                messageCount === 1
+                    ? `Delete this message? This cannot be undone.`
+                    : `Delete ${messageCount} messages? This cannot be undone.`,
+                { modal: true },
+                'Delete'
+            );
+
+            if (confirmation === 'Delete') {
+                await connectionsProvider.deleteMessages(messageData);
+            }
+        }
+    );
+
     // Handle double-click on queue items
     treeView.onDidChangeSelection(async (e) => {
         if (e.selection.length > 0) {
@@ -106,7 +126,8 @@ export function activate(context: vscode.ExtensionContext) {
         refreshCommand,
         deleteConnectionCommand,
         showQueueMessagesCommand,
-        moveMessageToQueueCommand
+        moveMessageToQueueCommand,
+        deleteMessagesCommand
     );
 }
 
