@@ -1,4 +1,4 @@
-import { QueueRuntimeProperties, WithResponse } from '@azure/service-bus';
+import { QueueRuntimeProperties } from '@azure/service-bus';
 import * as vscode from 'vscode';
 
 export interface Queue {
