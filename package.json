@@ -4,6 +4,7 @@
     "description": "Manage Azure Service Bus queues and topics from VS Code",
     "version": "0.1.0",
     "publisher": "busdriver",
+    "license": "MIT",
     "engines": {
         "vscode": "^1.85.0"
     },
