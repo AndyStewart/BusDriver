@@ -19,7 +19,6 @@ export function activate(context: vscode.ExtensionContext) {
     const addConnectionCommand = vscode.commands.registerCommand(
         'busdriver.addConnection',
         async () => {
-
             await connectionsProvider.addConnection();
         }
     );

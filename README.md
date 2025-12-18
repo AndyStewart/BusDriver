@@ -1,5 +1,7 @@
 # BusDriver
 
+[![CI](https://github.com/andrewstewart/busdriver/actions/workflows/ci.yml/badge.svg)](https://github.com/andrewstewart/busdriver/actions/workflows/ci.yml)
+
 A Visual Studio Code extension for managing Azure Service Bus queues and topics.
 
 ## Features
