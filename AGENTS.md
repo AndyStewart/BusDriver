@@ -104,7 +104,7 @@
   - NEVER log secrets (connection strings, keys). Redact sensitive values before logging.
 - Comments & documentation
   - Public APIs: include JSDoc comments.
-  - Keep inline comments concise and ideally explain the why, not the what.
+  - Keep inline comments concise and ideally explain the why, not the what, prefer readable code over the over use of comments
 - File & export organization
   - One primary exported class/module per file when sensible (existing pattern: `src/models/Connection.ts`).
   - Use named exports for utilities; reserve default exports for rare single-primary-export modules.
