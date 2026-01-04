@@ -1,13 +1,30 @@
 import * as vscode from 'vscode';
+import { AzureMessageOperations } from './adapters/azure/AzureMessageOperations';
+import { AzureQueueCatalog } from './adapters/azure/AzureQueueCatalog';
+import { VsCodeConnectionRepository } from './adapters/vscode/VsCodeConnectionRepository';
+import { VsCodeLogger } from './adapters/vscode/VsCodeLogger';
+import { VsCodeTelemetry } from './adapters/vscode/VsCodeTelemetry';
 import { ConnectionsProvider } from './providers/ConnectionsProvider';
-import { QueueMessagesPanel, MessageData } from './providers/QueueMessagesPanel';
+import { QueueMessagesPanel, QueueMessage } from './providers/QueueMessagesPanel';
 import { QueueTreeItem } from './models/Queue';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('BusDriver extension is now active');
 
+    const connectionRepository = new VsCodeConnectionRepository(context);
+    const queueCatalog = new AzureQueueCatalog();
+    const messageOperations = new AzureMessageOperations();
+    const logger = new VsCodeLogger();
+    const telemetry = new VsCodeTelemetry();
+
     // Create the connections provider
-    const connectionsProvider = new ConnectionsProvider(context);
+    const connectionsProvider = new ConnectionsProvider(
+        connectionRepository,
+        queueCatalog,
+        messageOperations,
+        logger,
+        telemetry
+    );
     // Register the tree view
     const treeView = vscode.window.createTreeView('busdriver.connections', {
         treeDataProvider: connectionsProvider,
@@ -55,7 +72,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     const moveMessageToQueueCommand = vscode.commands.registerCommand(
         'busdriver.moveMessageToQueue',
-        async (messageData: MessageData) => {
+        async (messageData: QueueMessage) => {
             // Get all available queues
             const allQueues = await connectionsProvider.getAllQueues();
 
@@ -83,7 +100,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     const deleteMessagesCommand = vscode.commands.registerCommand(
         'busdriver.deleteMessages',
-        async (messageData: MessageData | MessageData[]) => {
+        async (messageData: QueueMessage | QueueMessage[]) => {
             const messages = Array.isArray(messageData) ? messageData : [messageData];
             const messageCount = messages.length;
 

@@ -1,4 +1,3 @@
-import { QueueRuntimeProperties } from '@azure/service-bus';
 import * as vscode from 'vscode';
 
 export interface Queue {
@@ -6,10 +5,14 @@ export interface Queue {
     connectionId: string;
 }
 
+export interface QueueStats {
+    activeMessageCount: number;
+}
+
 export class QueueTreeItem extends vscode.TreeItem {
     constructor(
         public readonly queue: Queue,
-        public readonly stats: QueueRuntimeProperties,
+        public readonly stats: QueueStats,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState
     ) {
         super(`${queue.name} (${stats.activeMessageCount})`, collapsibleState);

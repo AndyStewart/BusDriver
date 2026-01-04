@@ -83,6 +83,7 @@
         "watch-tests": "tsc -p . -w --outDir out",
         "pretest": "npm run compile-tests && npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
+        "test:unit": "npx mocha \"out/test/adapters/**/*.js\"",
         "test": "vscode-test"
     },
     "dependencies": {

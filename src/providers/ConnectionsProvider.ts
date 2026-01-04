@@ -1,8 +1,12 @@
 import * as vscode from 'vscode';
 import { Connection, ConnectionTreeItem } from '../models/Connection';
-import { Queue, QueueTreeItem } from '../models/Queue';
-import { ServiceBusAdministrationClient, ServiceBusClient } from '@azure/service-bus';
-import { QueueMessagesPanel, MessageData } from './QueueMessagesPanel';
+import { Queue, QueueStats, QueueTreeItem } from '../models/Queue';
+import { ConnectionRepository } from '../ports/ConnectionRepository';
+import { Logger } from '../ports/Logger';
+import { MessageOperations, QueueMessage } from '../ports/MessageOperations';
+import { QueueCatalog } from '../ports/QueueCatalog';
+import { Telemetry } from '../ports/Telemetry';
+import { QueueMessagesPanel, QueueMessage as QueueMessageData } from './QueueMessagesPanel';
 
 
 export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTreeItem | QueueTreeItem>, vscode.TreeDragAndDropController<QueueTreeItem> {
@@ -14,8 +18,14 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
 
     private connections: Connection[] = [];
 
-    constructor(private context: vscode.ExtensionContext) {
-        this.loadConnections();
+    constructor(
+        private readonly connectionRepository: ConnectionRepository,
+        private readonly queueCatalog: QueueCatalog,
+        private readonly messageOperations: MessageOperations,
+        private readonly logger: Logger,
+        private readonly telemetry: Telemetry
+    ) {
+        void this.loadConnections();
     }
 
     refresh(): void {
@@ -95,7 +105,8 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         };
 
         this.connections.push(connection);
-        await this.saveConnections();
+        await this.connectionRepository.save(connection);
+        this.telemetry.trackEvent('connections.added');
         this.refresh();
 
         vscode.window.showInformationMessage(`Connection '${connection.name}' added successfully`);
@@ -110,41 +121,29 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
 
         if (confirm === 'Delete') {
             this.connections = this.connections.filter(c => c.id !== item.connection.id);
-            await this.saveConnections();
+            await this.connectionRepository.remove(item.connection.id);
+            this.telemetry.trackEvent('connections.deleted');
             this.refresh();
             vscode.window.showInformationMessage(`Connection '${item.connection.name}' deleted`);
         }
     }
 
     private async loadConnections(): Promise<void> {
-        const stored = this.context.globalState.get<Connection[]>('connections', []);
-
-        // Convert stored date strings back to Date objects
-        this.connections = stored.map(c => ({
-            ...c,
-            createdAt: new Date(c.createdAt)
-        }));
-    }
-
-    private async saveConnections(): Promise<void> {
-        // Store connection strings in Secret Storage for security
-        for (const conn of this.connections) {
-            await this.context.secrets.store(`connection.${conn.id}`, conn.connectionString);
+        try {
+            this.connections = await this.connectionRepository.getAll();
+        } catch (error) {
+            const normalizedError = error instanceof Error ? error : new Error(String(error));
+            this.logger.error('Failed to load connections', { message: normalizedError.message });
+            this.telemetry.trackError('connections.load_failed', normalizedError);
+            this.connections = [];
         }
-
-        // Store connection metadata (without connection strings) in global state
-        const connectionsToStore = this.connections.map(c => ({
-            id: c.id,
-            name: c.name,
-            connectionString: '', // Don't store in plain state
-            createdAt: c.createdAt
-        }));
-
-        await this.context.globalState.update('connections', connectionsToStore);
     }
 
     async getConnectionString(connectionId: string): Promise<string | undefined> {
-        return await this.context.secrets.get(`connection.${connectionId}`);
+        const connection = await this.connectionRepository.getById(connectionId);
+        const connectionString = connection?.connectionString?.trim();
+
+        return connectionString ? connectionString : undefined;
     }
 
     private generateId(): string {
@@ -156,18 +155,15 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
 
         for (const connection of this.connections) {
             try {
-                const connectionString = await this.getConnectionString(connection.id);
-                if (!connectionString) {
+                if (!connection.connectionString) {
                     continue;
                 }
 
-                const adminClient = new ServiceBusAdministrationClient(connectionString);
-                const queueIterator = adminClient.listQueues();
-
-                for await (const queueProperties of queueIterator) {
+                const queues = await this.queueCatalog.listQueues(connection);
+                for (const queueInfo of queues) {
                     allQueues.push({
                         queue: {
-                            name: queueProperties.name,
+                            name: queueInfo.name,
                             connectionId: connection.id
                         },
                         connection: connection
@@ -175,14 +171,16 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
                 }
             } catch (error) {
                 // Skip connections with errors
-                console.error(`Failed to list queues for ${connection.name}:`, error);
+                const normalizedError = error instanceof Error ? error : new Error(String(error));
+                this.logger.error('Failed to list queues', { connectionId: connection.id, message: normalizedError.message });
+                this.telemetry.trackError('queues.list_failed', normalizedError, { connectionId: connection.id });
             }
         }
 
         return allQueues;
     }
 
-    async moveMessageToQueue(messageData: MessageData | MessageData[], targetQueue: Queue): Promise<void> {
+    async moveMessageToQueue(messageData: QueueMessageData | QueueMessageData[], targetQueue: Queue): Promise<void> {
         const connectionString = await this.getConnectionString(targetQueue.connectionId);
 
         if (!connectionString) {
@@ -196,8 +194,8 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         const isMultiple = messageCount > 1;
 
         const results = {
-            successful: [] as MessageData[],
-            failed: [] as { message: MessageData, error: string }[]
+            successful: [] as QueueMessageData[],
+            failed: [] as { message: QueueMessageData, error: string }[]
         };
 
         await vscode.window.withProgress({
@@ -277,7 +275,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         this.refresh();
     }
 
-    async deleteMessages(messageData: MessageData | MessageData[]): Promise<void> {
+    async deleteMessages(messageData: QueueMessageData | QueueMessageData[]): Promise<void> {
         // Normalize to array for consistent processing
         const messages = Array.isArray(messageData) ? messageData : [messageData];
         const messageCount = messages.length;
@@ -293,8 +291,8 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         const queueName = firstMessage.sourceQueue.name;
 
         const results = {
-            successful: [] as MessageData[],
-            failed: [] as { message: MessageData, error: string }[]
+            successful: [] as QueueMessageData[],
+            failed: [] as { message: QueueMessageData, error: string }[]
         };
 
         await vscode.window.withProgress({
@@ -369,29 +367,31 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
 
     private async getQueues(connection: Connection): Promise<QueueTreeItem[]> {
         try {
-            const connectionString = await this.getConnectionString(connection.id);
-            if (!connectionString) {
+            if (!connection.connectionString) {
                 vscode.window.showErrorMessage(`Connection string not found for ${connection.name}`);
                 return [];
             }
 
-            const adminClient = new ServiceBusAdministrationClient(connectionString);
+            const queueInfos = await this.queueCatalog.listQueues(connection);
             const queues: QueueTreeItem[] = [];
 
-            // List all queues
-            const queueIterator = adminClient.listQueues();
-            for await (const queueProperties of queueIterator) {
+            for (const queueInfo of queueInfos) {
                 const queue: Queue = {
-                    name: queueProperties.name,
+                    name: queueInfo.name,
                     connectionId: connection.id
                 };
-                const stats = await adminClient.getQueueRuntimeProperties(queue.name); // Ensure queue exists
+                const stats: QueueStats = {
+                    activeMessageCount: queueInfo.activeMessageCount
+                };
                 queues.push(new QueueTreeItem(queue, stats, vscode.TreeItemCollapsibleState.None));
             }
 
             return queues;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
+            const normalizedError = error instanceof Error ? error : new Error(errorMessage);
+            this.logger.error('Failed to list queues for connection', { connectionId: connection.id, message: errorMessage });
+            this.telemetry.trackError('queues.connection_list_failed', normalizedError, { connectionId: connection.id });
             vscode.window.showErrorMessage(`Failed to list queues for ${connection.name}: ${errorMessage}`);
             return [];
         }
@@ -450,7 +450,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         console.log('No valid message data found in any format');
     }
 
-    private async processMessageMove(target: QueueTreeItem, messageData: MessageData | MessageData[]): Promise<void> {
+    private async processMessageMove(target: QueueTreeItem, messageData: QueueMessageData | QueueMessageData[]): Promise<void> {
         try {
             const connectionString = await this.getConnectionString(target.queue.connectionId);
 
@@ -471,10 +471,10 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
                 cancellable: false
             }, async () => {
                 for (const msg of messages) {
-                    await this.sendMessageToQueue(
+                    await this.messageOperations.sendMessage(
                         target.queue.name,
                         connectionString,
-                        msg
+                        this.toQueueMessage(msg)
                     );
                 }
             });
@@ -499,68 +499,22 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         }
     }
 
-    private async sendMessageToQueue(queueName: string, connectionString: string, messageData: MessageData): Promise<void> {
-        const client = new ServiceBusClient(connectionString);
-        const sender = client.createSender(queueName);
-
-        try {
-            // Prepare the message with all original properties preserved
-            const message = {
-                body: messageData.body,
-                messageId: messageData.messageId,
-                applicationProperties: {
-                    ...messageData.properties,
-                    // Add metadata about the original message
-                    originalEnqueuedTime: messageData.enqueuedTime,
-                    originalDeliveryCount: messageData.deliveryCount,
-                    originalSequenceNumber: messageData.sequenceNumber
-                }
-            };
-
-            await sender.sendMessages(message);
-        } finally {
-            await sender.close();
-            await client.close();
-        }
+    private async sendMessageToQueue(queueName: string, connectionString: string, messageData: QueueMessageData): Promise<void> {
+        await this.messageOperations.sendMessage(queueName, connectionString, this.toQueueMessage(messageData));
     }
 
     private async deleteMessageFromQueue(queueName: string, connectionString: string, sequenceNumber: string): Promise<void> {
-        const client = new ServiceBusClient(connectionString);
-        const receiver = client.createReceiver(queueName);
+        await this.messageOperations.deleteMessage(queueName, connectionString, sequenceNumber);
+    }
 
-        try {
-            const maxAttempts = 5;
-            let found = false;
-
-            for (let attempt = 0; attempt < maxAttempts && !found; attempt++) {
-                // Receive messages and find the one with matching sequence number
-                const messages = await receiver.receiveMessages(100, { maxWaitTimeInMs: 5000 });
-
-                for (const message of messages) {
-                    if (message.sequenceNumber?.toString() === sequenceNumber) {
-                        // Complete (delete) the message
-                        await receiver.completeMessage(message);
-                        console.log(`Deleted message ${sequenceNumber} from ${queueName}`);
-                        found = true;
-                    } else {
-                        // Abandon messages we don't want to delete
-                        await receiver.abandonMessage(message);
-                    }
-                }
-
-                if (!found && messages.length === 0) {
-                    // No more messages to check
-                    break;
-                }
-            }
-
-            if (!found) {
-                console.warn(`Message with sequence number ${sequenceNumber} not found in ${queueName} after ${maxAttempts} attempts`);
-                throw new Error(`Message ${sequenceNumber} not found in queue`);
-            }
-        } finally {
-            await receiver.close();
-            await client.close();
-        }
+    private toQueueMessage(messageData: QueueMessageData): QueueMessage {
+        return {
+            body: messageData.body,
+            messageId: messageData.messageId,
+            properties: messageData.properties,
+            enqueuedTime: messageData.enqueuedTime,
+            deliveryCount: messageData.deliveryCount,
+            sequenceNumber: messageData.sequenceNumber
+        };
     }
 }

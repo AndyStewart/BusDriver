@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { ServiceBusClient, ServiceBusReceivedMessage } from '@azure/service-bus';
 import { Queue } from '../models/Queue';
 
-export interface MessageData {
+export interface QueueMessage {
     sequenceNumber: string;
     messageId: string;
     body: string;
@@ -15,7 +15,7 @@ export interface MessageData {
 
 export class QueueMessagesPanel {
     public static currentPanel: QueueMessagesPanel | undefined;
-    public static pendingDragMessage: MessageData | MessageData[] | undefined;
+    public static pendingDragMessage: QueueMessage | QueueMessage[] | undefined;
     private readonly _panel: vscode.WebviewPanel;
     private _disposables: vscode.Disposable[] = [];
 
@@ -54,7 +54,7 @@ export class QueueMessagesPanel {
                         // User wants to move message(s) to another queue
                         // Add source queue information to each message
                         const messages = Array.isArray(message.data) ? message.data : [message.data];
-                        messages.forEach((msg: MessageData) => {
+                        messages.forEach((msg: QueueMessage) => {
                             msg.sourceQueue = this.queue;
                             msg.sourceConnectionString = this.connectionString;
                         });
@@ -65,7 +65,7 @@ export class QueueMessagesPanel {
                         // User wants to delete message(s)
                         // Add source queue information to each message
                         const messages = Array.isArray(message.data) ? message.data : [message.data];
-                        messages.forEach((msg: MessageData) => {
+                        messages.forEach((msg: QueueMessage) => {
                             msg.sourceQueue = this.queue;
                             msg.sourceConnectionString = this.connectionString;
                         });
