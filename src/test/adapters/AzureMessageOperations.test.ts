@@ -66,6 +66,9 @@ describe('AzureMessageOperations', () => {
                     { sequenceNumber: '42' }
                 ];
             },
+            peekMessages: async () => {
+                return [];
+            },
             completeMessage: async (message) => {
                 completed.push(String(message.sequenceNumber));
             },
@@ -93,6 +96,64 @@ describe('AzureMessageOperations', () => {
 
         assert.deepStrictEqual(completed, ['42']);
         assert.deepStrictEqual(abandoned, ['41']);
+        assert.strictEqual(receiverClosed, true);
+        assert.strictEqual(clientClosed, true);
+    });
+
+    it('peeks messages and maps metadata', async () => {
+        let receiverClosed = false;
+        let clientClosed = false;
+
+        const receiver: ReceiverLike = {
+            receiveMessages: async () => {
+                return [];
+            },
+            completeMessage: async () => {
+                return;
+            },
+            abandonMessage: async () => {
+                return;
+            },
+            peekMessages: async () => {
+                return [
+                    {
+                        sequenceNumber: 7,
+                        messageId: 'msg-7',
+                        body: { hello: 'world' },
+                        applicationProperties: { correlationId: 'abc' },
+                        enqueuedTimeUtc: new Date('2024-03-01T12:00:00.000Z'),
+                        deliveryCount: 1
+                    }
+                ];
+            },
+            close: async () => {
+                receiverClosed = true;
+            }
+        };
+
+        const client: ServiceBusClientLike = {
+            createSender: () => {
+                throw new Error('sender not needed');
+            },
+            createReceiver: () => receiver,
+            close: async () => {
+                clientClosed = true;
+            }
+        };
+
+        const operations = new AzureMessageOperations(() => client);
+        const result = await operations.peekMessages('queue-a', 'Endpoint=sb://fake/', 50);
+
+        assert.deepStrictEqual(result, [
+            {
+                body: { hello: 'world' },
+                messageId: 'msg-7',
+                properties: { correlationId: 'abc' },
+                enqueuedTime: new Date('2024-03-01T12:00:00.000Z').toLocaleString(),
+                deliveryCount: 1,
+                sequenceNumber: '7'
+            }
+        ]);
         assert.strictEqual(receiverClosed, true);
         assert.strictEqual(clientClosed, true);
     });

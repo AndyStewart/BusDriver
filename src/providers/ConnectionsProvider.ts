@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import type { Connection } from '../domain/models/Connection';
 import { ConnectionService } from '../domain/connections/ConnectionService';
+import { QueueRegistryService } from '../domain/queues/QueueRegistryService';
 import { ConnectionTreeItem } from '../models/ConnectionTreeItem';
 import { Queue, QueueStats, QueueTreeItem } from '../models/Queue';
 import { Logger } from '../ports/Logger';
 import { MessageOperations, QueueMessage } from '../ports/MessageOperations';
-import { QueueCatalog } from '../ports/QueueCatalog';
 import { Telemetry } from '../ports/Telemetry';
 import { QueueMessagesPanel, QueueMessage as QueueMessageData } from './QueueMessagesPanel';
 
@@ -21,7 +21,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
 
     constructor(
         private readonly connectionService: ConnectionService,
-        private readonly queueCatalog: QueueCatalog,
+        private readonly queueRegistryService: QueueRegistryService,
         private readonly messageOperations: MessageOperations,
         private readonly logger: Logger,
         private readonly telemetry: Telemetry
@@ -149,28 +149,21 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
     async getAllQueues(): Promise<Array<{ queue: Queue, connection: Connection }>> {
         const allQueues: Array<{ queue: Queue, connection: Connection }> = [];
 
-        for (const connection of this.connections) {
-            try {
-                if (!connection.connectionString) {
-                    continue;
-                }
-
-                const queues = await this.queueCatalog.listQueues(connection);
-                for (const queueInfo of queues) {
-                    allQueues.push({
-                        queue: {
-                            name: queueInfo.name,
-                            connectionId: connection.id
-                        },
-                        connection: connection
-                    });
-                }
-            } catch (error) {
-                // Skip connections with errors
-                const normalizedError = error instanceof Error ? error : new Error(String(error));
-                this.logger.error('Failed to list queues', { connectionId: connection.id, message: normalizedError.message });
-                this.telemetry.trackError('queues.list_failed', normalizedError, { connectionId: connection.id });
+        try {
+            const queues = await this.queueRegistryService.listAllQueues();
+            for (const entry of queues) {
+                allQueues.push({
+                    queue: {
+                        name: entry.queue.name,
+                        connectionId: entry.queue.connectionId
+                    },
+                    connection: entry.connection
+                });
             }
+        } catch (error) {
+            const normalizedError = error instanceof Error ? error : new Error(String(error));
+            this.logger.error('Failed to list queues', { message: normalizedError.message });
+            this.telemetry.trackError('queues.list_failed', normalizedError);
         }
 
         return allQueues;
@@ -368,7 +361,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
                 return [];
             }
 
-            const queueInfos = await this.queueCatalog.listQueues(connection);
+            const queueInfos = await this.queueRegistryService.listQueuesForConnection(connection);
             const queues: QueueTreeItem[] = [];
 
             for (const queueInfo of queueInfos) {

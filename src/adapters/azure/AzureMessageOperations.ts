@@ -10,11 +10,17 @@ export interface ReceiverLike {
     receiveMessages(maxMessages: number, options: { maxWaitTimeInMs: number }): Promise<ReceivedMessageLike[]>;
     completeMessage(message: ReceivedMessageLike): Promise<void>;
     abandonMessage(message: ReceivedMessageLike): Promise<void>;
+    peekMessages(maxMessages: number): Promise<ReceivedMessageLike[]>;
     close(): Promise<void>;
 }
 
 export interface ReceivedMessageLike {
     sequenceNumber?: number | string | { toString(): string };
+    messageId?: string | { toString(): string };
+    body?: unknown;
+    applicationProperties?: Record<string, unknown>;
+    enqueuedTimeUtc?: Date;
+    deliveryCount?: number;
 }
 
 export interface ServiceBusClientLike {
@@ -82,6 +88,30 @@ export class AzureMessageOperations implements MessageOperations {
                 console.warn(`Message with sequence number ${sequenceNumber} not found in ${queueName} after ${maxAttempts} attempts`);
                 throw new Error(`Message ${sequenceNumber} not found in queue`);
             }
+        } finally {
+            await receiver.close();
+            await client.close();
+        }
+    }
+
+    async peekMessages(queueName: string, connectionString: string, maxMessages: number): Promise<QueueMessage[]> {
+        const client = this.clientFactory(connectionString);
+        const receiver = client.createReceiver(queueName);
+
+        try {
+            const messages = await receiver.peekMessages(maxMessages);
+            return messages.map((message) => {
+                return {
+                    body: message.body,
+                    messageId: message.messageId?.toString() ?? '',
+                    properties: message.applicationProperties ?? {},
+                    enqueuedTime: message.enqueuedTimeUtc
+                        ? message.enqueuedTimeUtc.toLocaleString()
+                        : 'N/A',
+                    deliveryCount: message.deliveryCount ?? 0,
+                    sequenceNumber: message.sequenceNumber?.toString() ?? 'N/A'
+                };
+            });
         } finally {
             await receiver.close();
             await client.close();

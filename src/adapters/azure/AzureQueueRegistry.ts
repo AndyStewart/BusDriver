@@ -1,6 +1,6 @@
 import { ServiceBusAdministrationClient } from '@azure/service-bus';
 import type { Connection } from '../../domain/models/Connection';
-import type { QueueCatalog, QueueInfo } from '../../ports/QueueCatalog';
+import type { QueueInfo, QueueRegistry } from '../../ports/QueueRegistry';
 
 export interface AdminQueueClient {
     listQueues(): AsyncIterable<{ name: string }>;
@@ -9,7 +9,7 @@ export interface AdminQueueClient {
 
 export type AdminClientFactory = (connectionString: string) => AdminQueueClient;
 
-export class AzureQueueCatalog implements QueueCatalog {
+export class AzureQueueRegistry implements QueueRegistry {
     constructor(private readonly adminClientFactory: AdminClientFactory = (connectionString) => {
         return new ServiceBusAdministrationClient(connectionString);
     }) {}

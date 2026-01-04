@@ -6,6 +6,6 @@ export interface QueueInfo {
     activeMessageCount: number;
 }
 
-export interface QueueCatalog {
+export interface QueueRegistry {
     listQueues(connection: Connection): Promise<QueueInfo[]>;
 }

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { ServiceBusClient, ServiceBusReceivedMessage } from '@azure/service-bus';
 import { Queue } from '../models/Queue';
+import type { MessageOperations, QueueMessage as PortQueueMessage } from '../ports/MessageOperations';
 
 export interface QueueMessage {
     sequenceNumber: string;
@@ -23,6 +23,7 @@ export class QueueMessagesPanel {
         panel: vscode.WebviewPanel,
         private readonly queue: Queue,
         private readonly connectionString: string,
+        private readonly messageOperations: MessageOperations,
         private readonly extensionUri: vscode.Uri
     ) {
         this._panel = panel;
@@ -82,7 +83,8 @@ export class QueueMessagesPanel {
     public static async createOrShow(
         extensionUri: vscode.Uri,
         queue: Queue,
-        connectionString: string
+        connectionString: string,
+        messageOperations: MessageOperations
     ) {
         const column = vscode.window.activeTextEditor
             ? vscode.window.activeTextEditor.viewColumn
@@ -112,6 +114,7 @@ export class QueueMessagesPanel {
             panel,
             queue,
             connectionString,
+            messageOperations,
             extensionUri
         );
     }
@@ -167,10 +170,10 @@ export class QueueMessagesPanel {
                 return {
                     sequenceNumber: msg.sequenceNumber?.toString() || 'N/A',
                     messageId: msg.messageId?.toString() || 'N/A',
-                    enqueuedTime: msg.enqueuedTimeUtc ? new Date(msg.enqueuedTimeUtc).toLocaleString() : 'N/A',
-                    deliveryCount: msg.deliveryCount || 0,
+                    enqueuedTime: msg.enqueuedTime || 'N/A',
+                    deliveryCount: msg.deliveryCount ?? 0,
                     body: bodyContent,
-                    properties: msg.applicationProperties || {}
+                    properties: msg.properties || {}
                 };
             }));
 
@@ -714,15 +717,13 @@ export class QueueMessagesPanel {
         }
     }
 
-    private _generateMessageTable(messages: ServiceBusReceivedMessage[]): string {
+    private _generateMessageTable(messages: PortQueueMessage[]): string {
         if (messages.length === 0) {
             return '<div class="no-messages">No messages in queue</div>';
         }
 
         const rows = messages.map(msg => {
-            const enqueuedTime = msg.enqueuedTimeUtc
-                ? new Date(msg.enqueuedTimeUtc).toLocaleString()
-                : 'N/A';
+            const enqueuedTime = msg.enqueuedTime || 'N/A';
 
             return `
                 <tr>
@@ -751,18 +752,8 @@ export class QueueMessagesPanel {
         `;
     }
 
-    private async _peekMessages(): Promise<ServiceBusReceivedMessage[]> {
-        const client = new ServiceBusClient(this.connectionString);
-        const receiver = client.createReceiver(this.queue.name);
-
-        try {
-            // Peek up to 50 messages
-            const messages = await receiver.peekMessages(50);
-            return messages;
-        } finally {
-            await receiver.close();
-            await client.close();
-        }
+    private async _peekMessages(): Promise<PortQueueMessage[]> {
+        return this.messageOperations.peekMessages(this.queue.name, this.connectionString, 50);
     }
 
     private _escapeHtml(unsafe: string): string {

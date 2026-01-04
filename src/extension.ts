@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
 import { AzureMessageOperations } from './adapters/azure/AzureMessageOperations';
-import { AzureQueueCatalog } from './adapters/azure/AzureQueueCatalog';
+import { AzureQueueRegistry } from './adapters/azure/AzureQueueRegistry';
 import { VsCodeConnectionRepository } from './adapters/vscode/VsCodeConnectionRepository';
 import { VsCodeLogger } from './adapters/vscode/VsCodeLogger';
 import { VsCodeTelemetry } from './adapters/vscode/VsCodeTelemetry';
 import { ConnectionService } from './domain/connections/ConnectionService';
+import { QueueRegistryService } from './domain/queues/QueueRegistryService';
 import { ConnectionsProvider } from './providers/ConnectionsProvider';
 import { QueueMessagesPanel, QueueMessage } from './providers/QueueMessagesPanel';
 import { QueueTreeItem } from './models/Queue';
@@ -14,15 +15,16 @@ export function activate(context: vscode.ExtensionContext) {
 
     const connectionRepository = new VsCodeConnectionRepository(context);
     const connectionService = new ConnectionService(connectionRepository);
-    const queueCatalog = new AzureQueueCatalog();
+    const queueRegistry = new AzureQueueRegistry();
     const messageOperations = new AzureMessageOperations();
+    const queueRegistryService = new QueueRegistryService(queueRegistry, connectionRepository);
     const logger = new VsCodeLogger();
     const telemetry = new VsCodeTelemetry();
 
     // Create the connections provider
     const connectionsProvider = new ConnectionsProvider(
         connectionService,
-        queueCatalog,
+        queueRegistryService,
         messageOperations,
         logger,
         telemetry
@@ -64,7 +66,8 @@ export function activate(context: vscode.ExtensionContext) {
                 await QueueMessagesPanel.createOrShow(
                     context.extensionUri,
                     item.queue,
-                    connectionString
+                    connectionString,
+                    messageOperations
                 );
             } else {
                 vscode.window.showErrorMessage('Connection string not found');
@@ -130,7 +133,8 @@ export function activate(context: vscode.ExtensionContext) {
                     await QueueMessagesPanel.createOrShow(
                         context.extensionUri,
                         selected.queue,
-                        connectionString
+                        connectionString,
+                        messageOperations
                     );
                 }
             }
