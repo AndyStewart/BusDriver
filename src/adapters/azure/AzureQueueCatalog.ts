@@ -1,5 +1,5 @@
 import { ServiceBusAdministrationClient } from '@azure/service-bus';
-import type { Connection } from '../../models/Connection';
+import type { Connection } from '../../domain/models/Connection';
 import type { QueueCatalog, QueueInfo } from '../../ports/QueueCatalog';
 
 export interface AdminQueueClient {

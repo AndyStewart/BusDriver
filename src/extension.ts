@@ -4,6 +4,7 @@ import { AzureQueueCatalog } from './adapters/azure/AzureQueueCatalog';
 import { VsCodeConnectionRepository } from './adapters/vscode/VsCodeConnectionRepository';
 import { VsCodeLogger } from './adapters/vscode/VsCodeLogger';
 import { VsCodeTelemetry } from './adapters/vscode/VsCodeTelemetry';
+import { ConnectionService } from './domain/connections/ConnectionService';
 import { ConnectionsProvider } from './providers/ConnectionsProvider';
 import { QueueMessagesPanel, QueueMessage } from './providers/QueueMessagesPanel';
 import { QueueTreeItem } from './models/Queue';
@@ -12,6 +13,7 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('BusDriver extension is now active');
 
     const connectionRepository = new VsCodeConnectionRepository(context);
+    const connectionService = new ConnectionService(connectionRepository);
     const queueCatalog = new AzureQueueCatalog();
     const messageOperations = new AzureMessageOperations();
     const logger = new VsCodeLogger();
@@ -19,7 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Create the connections provider
     const connectionsProvider = new ConnectionsProvider(
-        connectionRepository,
+        connectionService,
         queueCatalog,
         messageOperations,
         logger,

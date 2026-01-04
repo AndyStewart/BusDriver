@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import type * as vscode from 'vscode';
 import { VsCodeConnectionRepository } from '../../adapters/vscode/VsCodeConnectionRepository';
-import type { Connection } from '../../models/Connection';
+import type { Connection } from '../../domain/models/Connection';
 
 class FakeSecretStorage {
     private readonly storage = new Map<string, string>();

@@ -1,4 +1,4 @@
-import type { Connection } from '../models/Connection';
+import type { Connection } from '../domain/models/Connection';
 
 export interface ConnectionRepository {
     getAll(): Promise<Connection[]>;

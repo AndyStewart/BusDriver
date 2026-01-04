@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
-import { Connection, ConnectionTreeItem } from '../models/Connection';
+import type { Connection } from '../domain/models/Connection';
+import { ConnectionService } from '../domain/connections/ConnectionService';
+import { ConnectionTreeItem } from '../models/ConnectionTreeItem';
 import { Queue, QueueStats, QueueTreeItem } from '../models/Queue';
-import { ConnectionRepository } from '../ports/ConnectionRepository';
 import { Logger } from '../ports/Logger';
 import { MessageOperations, QueueMessage } from '../ports/MessageOperations';
 import { QueueCatalog } from '../ports/QueueCatalog';
@@ -19,7 +20,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
     private connections: Connection[] = [];
 
     constructor(
-        private readonly connectionRepository: ConnectionRepository,
+        private readonly connectionService: ConnectionService,
         private readonly queueCatalog: QueueCatalog,
         private readonly messageOperations: MessageOperations,
         private readonly logger: Logger,
@@ -97,15 +98,14 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
             return;
         }
 
-        const connection: Connection = {
-            id: this.generateId(),
-            name: name.trim(),
-            connectionString: connectionString.trim(),
-            createdAt: new Date()
-        };
+        const result = await this.connectionService.addConnection(name, connectionString);
+        if (!result.ok) {
+            vscode.window.showErrorMessage(result.error.message);
+            return;
+        }
 
+        const connection = result.value;
         this.connections.push(connection);
-        await this.connectionRepository.save(connection);
         this.telemetry.trackEvent('connections.added');
         this.refresh();
 
@@ -121,7 +121,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
 
         if (confirm === 'Delete') {
             this.connections = this.connections.filter(c => c.id !== item.connection.id);
-            await this.connectionRepository.remove(item.connection.id);
+            await this.connectionService.deleteConnection(item.connection.id);
             this.telemetry.trackEvent('connections.deleted');
             this.refresh();
             vscode.window.showInformationMessage(`Connection '${item.connection.name}' deleted`);
@@ -130,7 +130,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
 
     private async loadConnections(): Promise<void> {
         try {
-            this.connections = await this.connectionRepository.getAll();
+            this.connections = await this.connectionService.listConnections();
         } catch (error) {
             const normalizedError = error instanceof Error ? error : new Error(String(error));
             this.logger.error('Failed to load connections', { message: normalizedError.message });
@@ -140,14 +140,10 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
     }
 
     async getConnectionString(connectionId: string): Promise<string | undefined> {
-        const connection = await this.connectionRepository.getById(connectionId);
+        const connection = await this.connectionService.getConnectionById(connectionId);
         const connectionString = connection?.connectionString?.trim();
 
         return connectionString ? connectionString : undefined;
-    }
-
-    private generateId(): string {
-        return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     }
 
     async getAllQueues(): Promise<Array<{ queue: Queue, connection: Connection }>> {

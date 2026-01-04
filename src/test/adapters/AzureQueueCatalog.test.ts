@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { AzureQueueCatalog, AdminQueueClient } from '../../adapters/azure/AzureQueueCatalog';
-import type { Connection } from '../../models/Connection';
+import type { Connection } from '../../domain/models/Connection';
 
 const createAsyncIterator = (names: string[]): AsyncIterable<{ name: string }> => {
     async function* iterator() {
