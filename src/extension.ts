@@ -5,6 +5,10 @@ import { VsCodeConnectionRepository } from './adapters/vscode/VsCodeConnectionRe
 import { VsCodeLogger } from './adapters/vscode/VsCodeLogger';
 import { VsCodeTelemetry } from './adapters/vscode/VsCodeTelemetry';
 import { ConnectionService } from './domain/connections/ConnectionService';
+import { MessageDeleter } from './domain/messages/MessageDeleter';
+import { MessageMover } from './domain/messages/MessageMover';
+import { MessageSender } from './domain/messages/MessageSender';
+import type { MessageWithSource } from './domain/messages/MessageTypes';
 import { QueueRegistryService } from './domain/queues/QueueRegistryService';
 import { ConnectionsProvider } from './providers/ConnectionsProvider';
 import { QueueMessagesPanel, QueueMessage } from './providers/QueueMessagesPanel';
@@ -17,6 +21,9 @@ export function activate(context: vscode.ExtensionContext) {
     const connectionService = new ConnectionService(connectionRepository);
     const queueRegistry = new AzureQueueRegistry();
     const messageOperations = new AzureMessageOperations();
+    const messageSender = new MessageSender(messageOperations);
+    const messageMover = new MessageMover(messageSender, messageOperations);
+    const messageDeleter = new MessageDeleter(messageOperations);
     const queueRegistryService = new QueueRegistryService(queueRegistry, connectionRepository);
     const logger = new VsCodeLogger();
     const telemetry = new VsCodeTelemetry();
@@ -25,7 +32,7 @@ export function activate(context: vscode.ExtensionContext) {
     const connectionsProvider = new ConnectionsProvider(
         connectionService,
         queueRegistryService,
-        messageOperations,
+        messageMover,
         logger,
         telemetry
     );
@@ -77,7 +84,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     const moveMessageToQueueCommand = vscode.commands.registerCommand(
         'busdriver.moveMessageToQueue',
-        async (messageData: QueueMessage) => {
+        async (messageData: QueueMessage | QueueMessage[]) => {
             // Get all available queues
             const allQueues = await connectionsProvider.getAllQueues();
 
@@ -98,7 +105,67 @@ export function activate(context: vscode.ExtensionContext) {
             });
 
             if (selected) {
-                await connectionsProvider.moveMessageToQueue(messageData, selected.queue);
+                const targetConnection = await connectionService.getConnectionById(selected.queue.connectionId);
+                const targetConnectionString = targetConnection?.connectionString?.trim();
+
+                if (!targetConnectionString) {
+                    vscode.window.showErrorMessage('Connection string not found for target queue');
+                    return;
+                }
+
+                const messages = Array.isArray(messageData) ? messageData : [messageData];
+                const messageCount = messages.length;
+                const isMultiple = messageCount > 1;
+                const domainMessages = messages.map(toMessageWithSource);
+
+                const results = await vscode.window.withProgress({
+                    location: vscode.ProgressLocation.Notification,
+                    title: isMultiple
+                        ? `Moving ${messageCount} messages to ${selected.queue.name}...`
+                        : `Moving message to ${selected.queue.name}...`,
+                    cancellable: false
+                }, async (progress) => {
+                    return messageMover.moveMessages(
+                        selected.queue.name,
+                        targetConnectionString,
+                        domainMessages,
+                        (processed, total) => {
+                            if (total >= 10) {
+                                const percentage = Math.round((processed / total) * 100);
+                                progress.report({
+                                    increment: (1 / total) * 100,
+                                    message: `${processed}/${total} (${percentage}%)`
+                                });
+                            }
+                        }
+                    );
+                });
+
+                if (results.failed.length === 0) {
+                    const msg = isMultiple
+                        ? `Successfully moved ${messageCount} messages to ${selected.queue.name}`
+                        : `Message moved to ${selected.queue.name}`;
+                    vscode.window.showInformationMessage(msg);
+                } else if (results.successful.length === 0) {
+                    const failedIds = results.failed.map(f => f.message.messageId).join(', ');
+                    vscode.window.showErrorMessage(
+                        `Failed to move ${messageCount} message(s) to ${selected.queue.name}. IDs: ${failedIds}`
+                    );
+                } else {
+                    const failedIds = results.failed.map(f => `${f.message.messageId} (${f.error})`).join(', ');
+                    vscode.window.showWarningMessage(
+                        `Moved ${results.successful.length} of ${messageCount} messages to ${selected.queue.name}. ` +
+                        `Failed: ${failedIds}`
+                    );
+                }
+
+                if (QueueMessagesPanel.currentPanel && results.successful.length > 0) {
+                    for (const msg of results.successful) {
+                        QueueMessagesPanel.currentPanel.notifyMessageRemoved(msg.sequenceNumber);
+                    }
+                }
+
+                connectionsProvider.refresh();
             }
         }
     );
@@ -108,6 +175,8 @@ export function activate(context: vscode.ExtensionContext) {
         async (messageData: QueueMessage | QueueMessage[]) => {
             const messages = Array.isArray(messageData) ? messageData : [messageData];
             const messageCount = messages.length;
+            const domainMessages = messages.map(toMessageWithSource);
+            const firstSource = domainMessages[0]?.source;
 
             const confirmation = await vscode.window.showWarningMessage(
                 messageCount === 1
@@ -118,7 +187,53 @@ export function activate(context: vscode.ExtensionContext) {
             );
 
             if (confirmation === 'Delete') {
-                await connectionsProvider.deleteMessages(messageData);
+                if (!firstSource || domainMessages.some(message => !message.source)) {
+                    vscode.window.showErrorMessage('Cannot delete message: source queue information missing');
+                    return;
+                }
+
+                const results = await vscode.window.withProgress({
+                    location: vscode.ProgressLocation.Notification,
+                    title: messageCount > 1 ? `Deleting ${messageCount} messages...` : 'Deleting message...',
+                    cancellable: false
+                }, async (progress) => {
+                    return messageDeleter.deleteMessages(
+                        domainMessages,
+                        (processed, total) => {
+                            if (total >= 10) {
+                                const percentage = Math.round((processed / total) * 100);
+                                progress.report({
+                                    increment: (1 / total) * 100,
+                                    message: `${processed}/${total} (${percentage}%)`
+                                });
+                            }
+                        }
+                    );
+                });
+
+                if (results.failed.length === 0) {
+                    const msg = messageCount > 1
+                        ? `Successfully deleted ${messageCount} messages from ${firstSource.queueName}`
+                        : `Message deleted from ${firstSource.queueName}`;
+                    vscode.window.showInformationMessage(msg);
+                } else if (results.successful.length === 0) {
+                    const failedIds = results.failed.map(f => f.message.messageId).join(', ');
+                    vscode.window.showErrorMessage(
+                        `Failed to delete ${messageCount} message(s) from ${firstSource.queueName}. IDs: ${failedIds}`
+                    );
+                } else {
+                    const failedIds = results.failed.map(f => `${f.message.messageId} (${f.error})`).join(', ');
+                    vscode.window.showWarningMessage(
+                        `Deleted ${results.successful.length} of ${messageCount} messages from ${firstSource.queueName}. ` +
+                        `Failed: ${failedIds}`
+                    );
+                }
+
+                if (QueueMessagesPanel.currentPanel && results.successful.length > 0) {
+                    await QueueMessagesPanel.currentPanel.refreshView();
+                }
+
+                connectionsProvider.refresh();
             }
         }
     );
@@ -155,4 +270,23 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
     console.log('BusDriver extension is now deactivated');
+}
+
+function toMessageWithSource(message: QueueMessage): MessageWithSource {
+    const source = message.sourceQueue && message.sourceConnectionString
+        ? {
+            queueName: message.sourceQueue.name,
+            connectionString: message.sourceConnectionString
+        }
+        : undefined;
+
+    return {
+        body: message.body,
+        messageId: message.messageId,
+        properties: message.properties,
+        enqueuedTime: message.enqueuedTime,
+        deliveryCount: message.deliveryCount,
+        sequenceNumber: message.sequenceNumber,
+        source
+    };
 }

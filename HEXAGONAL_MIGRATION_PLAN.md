@@ -10,7 +10,7 @@ This document outlines the concrete steps required to migrate BusDriver from the
 - **No dead abstractions:** each phase must wire new ports/services into production code immediately; no parallel/unused paths.
 
 ## 1. Folder & Naming Baseline
-- Create `src/domain/` for domain services/models and `src/ports/` for TypeScript interfaces that describe dependencies (`ConnectionRepository`, `QueueCatalog`, etc.).
+- Create `src/domain/` for domain services/models and `src/ports/` for TypeScript interfaces that describe dependencies (`ConnectionRepository`, `QueueRegistry`, etc.).
 - Add `src/adapters/vscode/` for VS Code-specific implementations and `src/adapters/azure/` for Service Bus gateways.
 - Update `tsconfig.json` `rootDir` (currently `src`) and ESLint import paths if needed so new folders build cleanly.
 
@@ -18,10 +18,10 @@ This document outlines the concrete steps required to migrate BusDriver from the
 **Goal:** Introduce pure TypeScript interfaces with no VS Code imports.
 
 Tasks:
-1. Create the following ports under `src/ports/`: `ConnectionRepository`, `QueueCatalog`, `MessageOperations`, optional `Telemetry`/`Logger`.
+1. Create the following ports under `src/ports/`: `ConnectionRepository`, `QueueRegistry`, `MessageOperations`, optional `Telemetry`/`Logger`.
 2. Document each interface with responsibilities, failure contracts, and async signatures.
 3. Provide VS Code adapters (e.g., `VsCodeConnectionRepository`) that implement the interfaces while delegating to `ExtensionContext`.
-4. Provide Azure adapters (`AzureQueueCatalog`, `AzureMessageOperations`) that implement the Azure-facing ports and wire them into production code immediately.
+4. Provide Azure adapters (`AzureQueueRegistry`, `AzureMessageOperations`) that implement the Azure-facing ports and wire them into production code immediately.
 5. Ensure existing `ConnectionsProvider` uses these adapters internally without yet extracting logic—this keeps behavior identical while allowing subsequent services to rely on the ports.
 6. Add unit tests validating adapters pass through values (use fakes for VS Code contexts).
 7. Remove any direct `ExtensionContext` usage from `ConnectionsProvider` once adapters are wired so the ports are the only path.
@@ -42,24 +42,34 @@ Tasks:
 5. Keep integration tests verifying tree behavior to ensure VS Code UI remains intact.
 6. Remove any remaining direct calls to the connection adapter in providers/commands so the service is the only access path.
 
+Status:
+- Completed. Added `ConnectionService` with domain-level validation and Result-style errors.
+- Moved `Connection` into `src/domain/models` and split `ConnectionTreeItem` into a UI-only model.
+- Wired `ConnectionsProvider`/`extension.ts` through the service; removed direct repository access.
+- Added unit tests for the service with an in-memory repository.
+
 ## 4. Phase Three — Service Bus Access Layer
-**Goal:** Centralize Azure client creation + queue discovery.
+**Goal:** Centralize Service Bus access behind ports/adapters, keeping adapters simple for now.
 
 Tasks:
-1. Introduce `AzureServiceBusGateway` inside `src/adapters/azure/` that implements `QueueCatalog` and `MessageOperations`. It owns retry policy, connection caching, and instrumentation hooks.
-2. Refactor `ConnectionsProvider` to obtain a reference to the gateway instead of instantiating SDK clients inline. This ensures only the gateway touches `@azure/service-bus`.
-3. Extract queue-listing logic into `src/domain/queues/QueueCatalogService.ts` (depends on `QueueCatalog` and `ConnectionService`).
-4. Ensure commands that refresh queues invoke the catalog, returning POJOs that the provider adapts into `TreeItem`s.
-5. Add unit tests for `QueueCatalog` covering empty states, errors, and pagination behavior (simulated via fake queue ports).
+1. Keep distinct adapters for `QueueRegistry` and `MessageOperations` without a shared gateway or cache.
+2. Refactor `ConnectionsProvider` to use the adapters/services instead of instantiating SDK clients inline. This ensures only adapters touch `@azure/service-bus`.
+3. Extract queue-listing logic into `src/domain/queues/QueueRegistryService.ts` (depends on `QueueRegistry` and the connection store).
+4. Ensure commands that refresh queues invoke the registry service, returning POJOs that the provider adapts into `TreeItem`s.
+5. Add unit tests for `QueueRegistry` covering empty states, errors, and pagination behavior (simulated via fake queue ports).
 6. Delete or refactor any remaining direct `@azure/service-bus` usage outside adapters; add a quick scan or lint check if helpful.
+
+Status:
+- Completed with separate `QueueRegistry`/`MessageOperations` adapters and a `QueueRegistryService`.
+- Deferred: shared gateway/cache (revisit if performance or connection reuse becomes an issue).
 
 ## 5. Phase Four — Message Operations
 **Goal:** Decouple message-moving/deleting/sending from VS Code concerns.
 
 Tasks:
 1. Create domain services: `MessageMover`, `MessageDeleter`, `MessageSender`, each depending on `MessageOperations`.
-2. Move confirmation/notification logic into `UserPrompts` implementations so services return results/intents rather than calling VS Code APIs.
-3. Update existing commands (send/move/delete) to call the domain services and translate results into UI feedback using the VS Code adapters.
+2. Keep all confirmation/notification logic in the command handlers (VS Code layer); services return results/intents only and never call VS Code APIs directly.
+3. Update existing commands (send/move/delete) to call the domain services and translate results into UI feedback with `vscode.window` in the command layer.
 4. Add failure-mode unit tests verifying retries, partial failures, and validation.
 5. Remove any legacy command paths that still use direct SDK calls or VS Code prompts.
 
@@ -67,7 +77,7 @@ Tasks:
 **Goal:** Split `QueueMessagesPanel` into controller + renderer.
 
 Tasks:
-1. Create `QueueMessagesController` under `src/domain/messages/` that coordinates message retrieval via `QueueCatalog`/`MessageGatewayPort` and emits serializable view models.
+1. Create `QueueMessagesController` under `src/domain/messages/` that coordinates message retrieval via `QueueRegistry`/`MessageGatewayPort` and emits serializable view models.
 2. Build a `QueueMessagesWebviewAdapter` (driving adapter) responsible only for wiring VS Code webview lifecycle events to/from the controller.
 3. Extract the HTML/JS to static files bundled by `esbuild` (hook via `npm run compile` to include new assets).
 4. Validate that drag-and-drop operations now call domain services and never mutate static globals.
