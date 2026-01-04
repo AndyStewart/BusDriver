@@ -54,8 +54,8 @@ describe('AzureMessageOperations', () => {
     });
 
     it('deletes messages by sequence number', async () => {
-        let completed: string[] = [];
-        let abandoned: string[] = [];
+        const completed: string[] = [];
+        const abandoned: string[] = [];
         let receiverClosed = false;
         let clientClosed = false;
 
