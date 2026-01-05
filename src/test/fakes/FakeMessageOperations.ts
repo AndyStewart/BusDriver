@@ -1,4 +1,8 @@
-import type { MessageOperations, QueueMessage } from '../../ports/MessageOperations';
+import type {
+    DeleteMessagesResult,
+    MessageOperations,
+    QueueMessage
+} from '../../ports/MessageOperations';
 
 export class FakeMessageOperations implements MessageOperations {
     sent: Array<{ queueName: string; connectionString: string; message: QueueMessage }> = [];
@@ -22,6 +26,31 @@ export class FakeMessageOperations implements MessageOperations {
         }
 
         this.deleted.push({ queueName, connectionString, sequenceNumber });
+    }
+
+    async deleteMessages(
+        queueName: string,
+        connectionString: string,
+        sequenceNumbers: string[]
+    ): Promise<DeleteMessagesResult> {
+        const deletedSequenceNumbers: string[] = [];
+        const notFoundSequenceNumbers: string[] = [];
+
+        for (const sequenceNumber of sequenceNumbers) {
+            if (this.deleteFailures.has(sequenceNumber)) {
+                notFoundSequenceNumbers.push(sequenceNumber);
+                continue;
+            }
+
+            this.deleted.push({ queueName, connectionString, sequenceNumber });
+            deletedSequenceNumbers.push(sequenceNumber);
+        }
+
+        return {
+            deletedSequenceNumbers,
+            notFoundSequenceNumbers,
+            failureReason: notFoundSequenceNumbers.length > 0 ? 'Message(s) not found in queue' : undefined
+        };
     }
 
     async peekMessages(queueName: string, connectionString: string, maxMessages: number): Promise<QueueMessage[]> {

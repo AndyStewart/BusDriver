@@ -45,11 +45,11 @@ Approach:
 - Avoid repeated `abandonMessage` calls for non-target messages where possible.
 
 Checklist:
-- [ ] Define a total time budget and per-iteration wait time.
-- [ ] Implement batch receive + in-memory ID matching.
-- [ ] Track found vs not-found messages.
-- [ ] Surface partial failures with a clear summary (counts + reason).
-- [ ] Add or update tests that cover delete matching and partial failures.
+- [x] Define a total time budget and per-iteration wait time.
+- [x] Implement batch receive + in-memory ID matching.
+- [x] Track found vs not-found messages.
+- [x] Surface partial failures with a clear summary (counts + reason).
+- [x] Add or update tests that cover delete matching and partial failures.
 - [ ] Run focused tests for this phase before moving on.
 - [ ] Re-run baseline and compare timings.
 

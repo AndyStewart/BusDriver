@@ -1,6 +1,14 @@
 import { ServiceBusClient } from '@azure/service-bus';
-import type { MessageOperations, QueueMessage } from '../../ports/MessageOperations';
+    import type {
+    DeleteMessagesOptions,
+    DeleteMessagesResult,
+    MessageOperations,
+    QueueMessage
+} from '../../ports/MessageOperations';
 import { AzureClientFactory } from './AzureClientFactory';
+
+const DEFAULT_DELETE_MAX_WAIT_TIME_MS = 500;
+const DEFAULT_DELETE_BATCH_SIZE = 100;
 
 export interface SenderLike {
     sendMessages(message: unknown): Promise<void>;
@@ -59,32 +67,66 @@ export class AzureMessageOperations implements MessageOperations {
     }
 
     async deleteMessage(queueName: string, connectionString: string, sequenceNumber: string): Promise<void> {
+        const result = await this.deleteMessages(queueName, connectionString, [sequenceNumber]);
+        if (result.notFoundSequenceNumbers.length > 0) {
+            const reason = result.failureReason ?? 'Message not found in queue';
+            throw new Error(`${reason} (deleted ${result.deletedSequenceNumbers.length} of 1)`);
+        }
+    }
+
+    async deleteMessages(
+        queueName: string,
+        connectionString: string,
+        sequenceNumbers: string[],
+        options?: DeleteMessagesOptions
+    ): Promise<DeleteMessagesResult> {
         const receiver = this.clientPool.getReceiver(connectionString, queueName);
 
-        const maxAttempts = 5;
-        let found = false;
+        const maxWaitTimeMs = Math.max(0, options?.maxWaitTimeMs ?? DEFAULT_DELETE_MAX_WAIT_TIME_MS);
+        const maxBatchSize = Math.max(1, options?.maxBatchSize ?? DEFAULT_DELETE_BATCH_SIZE);
+        const targetSequenceNumbers = new Set(sequenceNumbers);
+        const deletedSequenceNumbers = new Set<string>();
 
-        for (let attempt = 0; attempt < maxAttempts && !found; attempt++) {
-            const messages = await receiver.receiveMessages(100, { maxWaitTimeInMs: 5000 });
+        while (deletedSequenceNumbers.size < targetSequenceNumbers.size) {
+            const messages = await receiver.receiveMessages(maxBatchSize, { maxWaitTimeInMs: maxWaitTimeMs });
 
             for (const message of messages) {
-                if (message.sequenceNumber?.toString() === sequenceNumber) {
+                const currentSequenceNumber = message.sequenceNumber?.toString();
+                if (
+                    currentSequenceNumber &&
+                    targetSequenceNumbers.has(currentSequenceNumber) &&
+                    !deletedSequenceNumbers.has(currentSequenceNumber)
+                ) {
                     await receiver.completeMessage(message);
-                    found = true;
-                } else {
-                    await receiver.abandonMessage(message);
+                    deletedSequenceNumbers.add(currentSequenceNumber);
+                    continue;
                 }
+
+                await receiver.abandonMessage(message);
             }
 
-            if (!found && messages.length === 0) {
+            if (messages.length === 0) {
                 break;
             }
         }
 
-        if (!found) {
-            console.warn(`Message with sequence number ${sequenceNumber} not found in ${queueName} after ${maxAttempts} attempts`);
-            throw new Error(`Message ${sequenceNumber} not found in queue`);
+        const notFoundSequenceNumbers = sequenceNumbers.filter(
+            (sequenceNumber) => !deletedSequenceNumbers.has(sequenceNumber)
+        );
+        const failureReason =
+            notFoundSequenceNumbers.length > 0 ? 'Message(s) not found in queue' : undefined;
+
+        if (notFoundSequenceNumbers.length > 0) {
+            console.warn(
+                `Delete incomplete for ${queueName}: ${notFoundSequenceNumbers.length} of ${sequenceNumbers.length} not found`
+            );
         }
+
+        return {
+            deletedSequenceNumbers: Array.from(deletedSequenceNumbers),
+            notFoundSequenceNumbers,
+            failureReason
+        };
     }
 
     async peekMessages(queueName: string, connectionString: string, maxMessages: number): Promise<QueueMessage[]> {

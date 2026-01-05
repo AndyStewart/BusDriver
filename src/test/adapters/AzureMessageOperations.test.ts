@@ -114,6 +114,63 @@ describe('AzureMessageOperations', () => {
         assert.strictEqual(clientClosed, true);
     });
 
+    it('deletes multiple messages with batch matching', async () => {
+        const completed: string[] = [];
+        const abandoned: string[] = [];
+        let receiveCalls = 0;
+
+        const receiver: ReceiverLike = {
+            receiveMessages: async () => {
+                receiveCalls++;
+                if (receiveCalls === 1) {
+                    return [
+                        { sequenceNumber: '1' },
+                        { sequenceNumber: '2' },
+                        { sequenceNumber: '3' }
+                    ];
+                }
+                return [];
+            },
+            peekMessages: async () => {
+                return [];
+            },
+            completeMessage: async (message) => {
+                completed.push(String(message.sequenceNumber));
+            },
+            abandonMessage: async (message) => {
+                abandoned.push(String(message.sequenceNumber));
+            },
+            close: async () => {
+                return;
+            }
+        };
+
+        const client: ServiceBusClientLike = {
+            createSender: () => {
+                throw new Error('sender not needed');
+            },
+            createReceiver: () => receiver,
+            close: async () => {
+                return;
+            }
+        };
+
+        const operations = new AzureMessageOperations(() => client);
+
+        const result = await operations.deleteMessages(
+            'queue-a',
+            'Endpoint=sb://fake/',
+            ['1', '3', '5'],
+            { maxWaitTimeMs: 0, maxBatchSize: 100 }
+        );
+
+        assert.deepStrictEqual(completed.sort(), ['1', '3']);
+        assert.deepStrictEqual(abandoned, ['2']);
+        assert.deepStrictEqual(result.deletedSequenceNumbers.sort(), ['1', '3']);
+        assert.deepStrictEqual(result.notFoundSequenceNumbers, ['5']);
+        assert.strictEqual(result.failureReason, 'Message(s) not found in queue');
+    });
+
     it('peeks messages and maps metadata', async () => {
         let receiverClosed = false;
         let clientClosed = false;

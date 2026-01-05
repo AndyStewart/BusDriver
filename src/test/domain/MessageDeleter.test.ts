@@ -98,6 +98,10 @@ describe('MessageDeleter', () => {
         assert.strictEqual(result.successful.length, 1);
         assert.strictEqual(result.failed.length, 1);
         assert.strictEqual(result.failed[0].message.messageId, 'b');
+        assert.strictEqual(
+            result.failed[0].error,
+            'Message(s) not found in queue (deleted 0 of 1)'
+        );
         assert.deepStrictEqual(operations.deleted[0], {
             queueName: 'queue-a',
             connectionString: 'Endpoint=sb://queue-a/',
