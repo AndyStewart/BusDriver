@@ -31,6 +31,12 @@ describe('MessageDeleter', () => {
             connectionString: 'Endpoint=sb://queue-a/',
             sequenceNumber: '10'
         });
+        assert.deepStrictEqual(operations.released, [
+            {
+                queueName: 'queue-a',
+                connectionString: 'Endpoint=sb://queue-a/'
+            }
+        ]);
     });
 
     it('records failures when source is missing', async () => {
@@ -53,6 +59,7 @@ describe('MessageDeleter', () => {
         assert.strictEqual(result.failed.length, 1);
         assert.strictEqual(result.failed[0].error, 'Source queue information missing');
         assert.strictEqual(operations.deleted.length, 0);
+        assert.deepStrictEqual(operations.released, []);
     });
 
     it('returns partial failures when deletes fail', async () => {
@@ -96,5 +103,15 @@ describe('MessageDeleter', () => {
             connectionString: 'Endpoint=sb://queue-a/',
             sequenceNumber: '10'
         });
+        assert.deepStrictEqual(operations.released, [
+            {
+                queueName: 'queue-a',
+                connectionString: 'Endpoint=sb://queue-a/'
+            },
+            {
+                queueName: 'queue-b',
+                connectionString: 'Endpoint=sb://queue-b/'
+            }
+        ]);
     });
 });

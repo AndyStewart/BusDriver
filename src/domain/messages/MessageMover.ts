@@ -21,27 +21,49 @@ export class MessageMover {
 
         let processed = 0;
         const total = messages.length;
+        const queueReferences = new Map<string, { queueName: string; connectionString: string }>();
 
-        for (const message of messages) {
-            try {
-                await this.messageSender.send(targetQueueName, targetConnectionString, message);
+        const trackQueue = (queueName: string, connectionString: string) => {
+            const key = `${connectionString}::${queueName}`;
+            if (!queueReferences.has(key)) {
+                queueReferences.set(key, { queueName, connectionString });
+            }
+        };
 
-                if (message.source) {
-                    await this.messageOperations.deleteMessage(
-                        message.source.queueName,
-                        message.source.connectionString,
-                        message.sequenceNumber
-                    );
+        trackQueue(targetQueueName, targetConnectionString);
+
+        try {
+            for (const message of messages) {
+                try {
+                    await this.messageSender.send(targetQueueName, targetConnectionString, message);
+
+                    if (message.source) {
+                        trackQueue(message.source.queueName, message.source.connectionString);
+                        await this.messageOperations.deleteMessage(
+                            message.source.queueName,
+                            message.source.connectionString,
+                            message.sequenceNumber
+                        );
+                    }
+
+                    result.successful.push(message);
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    result.failed.push({ message, error: errorMessage });
                 }
 
-                result.successful.push(message);
-            } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                result.failed.push({ message, error: errorMessage });
+                processed++;
+                onProgress?.(processed, total);
             }
-
-            processed++;
-            onProgress?.(processed, total);
+        } finally {
+            if (this.messageOperations.releaseQueueResources) {
+                for (const queue of queueReferences.values()) {
+                    await this.messageOperations.releaseQueueResources(
+                        queue.queueName,
+                        queue.connectionString
+                    );
+                }
+            }
         }
 
         return result;

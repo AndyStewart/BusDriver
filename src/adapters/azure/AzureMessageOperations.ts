@@ -1,5 +1,6 @@
 import { ServiceBusClient } from '@azure/service-bus';
 import type { MessageOperations, QueueMessage } from '../../ports/MessageOperations';
+import { AzureClientFactory } from './AzureClientFactory';
 
 export interface SenderLike {
     sendMessages(message: unknown): Promise<void>;
@@ -32,71 +33,62 @@ export interface ServiceBusClientLike {
 export type ServiceBusClientFactory = (connectionString: string) => ServiceBusClientLike;
 
 export class AzureMessageOperations implements MessageOperations {
+    private readonly clientPool: AzureClientFactory;
+
     constructor(private readonly clientFactory: ServiceBusClientFactory = (connectionString) => {
         return new ServiceBusClient(connectionString);
-    }) {}
+    }) {
+        this.clientPool = new AzureClientFactory(clientFactory);
+    }
 
     async sendMessage(queueName: string, connectionString: string, messageData: QueueMessage): Promise<void> {
-        const client = this.clientFactory(connectionString);
-        const sender = client.createSender(queueName);
+        const sender = this.clientPool.getSender(connectionString, queueName);
 
-        try {
-            const message = {
-                body: messageData.body,
-                messageId: messageData.messageId,
-                applicationProperties: {
-                    ...messageData.properties,
-                    originalEnqueuedTime: messageData.enqueuedTime,
-                    originalDeliveryCount: messageData.deliveryCount,
-                    originalSequenceNumber: messageData.sequenceNumber
-                }
-            };
+        const message = {
+            body: messageData.body,
+            messageId: messageData.messageId,
+            applicationProperties: {
+                ...messageData.properties,
+                originalEnqueuedTime: messageData.enqueuedTime,
+                originalDeliveryCount: messageData.deliveryCount,
+                originalSequenceNumber: messageData.sequenceNumber
+            }
+        };
 
-            await sender.sendMessages(message);
-        } finally {
-            await sender.close();
-            await client.close();
-        }
+        await sender.sendMessages(message);
     }
 
     async deleteMessage(queueName: string, connectionString: string, sequenceNumber: string): Promise<void> {
-        const client = this.clientFactory(connectionString);
-        const receiver = client.createReceiver(queueName);
+        const receiver = this.clientPool.getReceiver(connectionString, queueName);
 
-        try {
-            const maxAttempts = 5;
-            let found = false;
+        const maxAttempts = 5;
+        let found = false;
 
-            for (let attempt = 0; attempt < maxAttempts && !found; attempt++) {
-                const messages = await receiver.receiveMessages(100, { maxWaitTimeInMs: 5000 });
+        for (let attempt = 0; attempt < maxAttempts && !found; attempt++) {
+            const messages = await receiver.receiveMessages(100, { maxWaitTimeInMs: 5000 });
 
-                for (const message of messages) {
-                    if (message.sequenceNumber?.toString() === sequenceNumber) {
-                        await receiver.completeMessage(message);
-                        found = true;
-                    } else {
-                        await receiver.abandonMessage(message);
-                    }
-                }
-
-                if (!found && messages.length === 0) {
-                    break;
+            for (const message of messages) {
+                if (message.sequenceNumber?.toString() === sequenceNumber) {
+                    await receiver.completeMessage(message);
+                    found = true;
+                } else {
+                    await receiver.abandonMessage(message);
                 }
             }
 
-            if (!found) {
-                console.warn(`Message with sequence number ${sequenceNumber} not found in ${queueName} after ${maxAttempts} attempts`);
-                throw new Error(`Message ${sequenceNumber} not found in queue`);
+            if (!found && messages.length === 0) {
+                break;
             }
-        } finally {
-            await receiver.close();
-            await client.close();
+        }
+
+        if (!found) {
+            console.warn(`Message with sequence number ${sequenceNumber} not found in ${queueName} after ${maxAttempts} attempts`);
+            throw new Error(`Message ${sequenceNumber} not found in queue`);
         }
     }
 
     async peekMessages(queueName: string, connectionString: string, maxMessages: number): Promise<QueueMessage[]> {
-        const client = this.clientFactory(connectionString);
-        const receiver = client.createReceiver(queueName);
+        const receiver = this.clientPool.getReceiver(connectionString, queueName);
 
         try {
             const messages = await receiver.peekMessages(maxMessages);
@@ -113,8 +105,15 @@ export class AzureMessageOperations implements MessageOperations {
                 };
             });
         } finally {
-            await receiver.close();
-            await client.close();
+            await this.clientPool.releaseQueueResources(connectionString, queueName);
         }
+    }
+
+    async releaseQueueResources(queueName: string, connectionString: string): Promise<void> {
+        await this.clientPool.releaseQueueResources(connectionString, queueName);
+    }
+
+    async dispose(): Promise<void> {
+        await this.clientPool.disposeAll();
     }
 }

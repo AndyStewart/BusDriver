@@ -39,8 +39,8 @@ describe('AzureMessageOperations', () => {
 
         await operations.sendMessage('queue-a', 'Endpoint=sb://fake/', payload);
 
-        assert.strictEqual(senderClosed, true);
-        assert.strictEqual(clientClosed, true);
+        assert.strictEqual(senderClosed, false);
+        assert.strictEqual(clientClosed, false);
         assert.deepStrictEqual(sentMessage, {
             body: 'hello',
             messageId: 'msg-1',
@@ -51,6 +51,13 @@ describe('AzureMessageOperations', () => {
                 originalSequenceNumber: '42'
             }
         });
+
+        await operations.releaseQueueResources('queue-a', 'Endpoint=sb://fake/');
+        assert.strictEqual(senderClosed, true);
+        assert.strictEqual(clientClosed, false);
+
+        await operations.dispose();
+        assert.strictEqual(clientClosed, true);
     });
 
     it('deletes messages by sequence number', async () => {
@@ -96,7 +103,14 @@ describe('AzureMessageOperations', () => {
 
         assert.deepStrictEqual(completed, ['42']);
         assert.deepStrictEqual(abandoned, ['41']);
+        assert.strictEqual(receiverClosed, false);
+        assert.strictEqual(clientClosed, false);
+
+        await operations.releaseQueueResources('queue-a', 'Endpoint=sb://fake/');
         assert.strictEqual(receiverClosed, true);
+        assert.strictEqual(clientClosed, false);
+
+        await operations.dispose();
         assert.strictEqual(clientClosed, true);
     });
 
@@ -155,6 +169,92 @@ describe('AzureMessageOperations', () => {
             }
         ]);
         assert.strictEqual(receiverClosed, true);
+        assert.strictEqual(clientClosed, false);
+
+        await operations.dispose();
         assert.strictEqual(clientClosed, true);
+    });
+
+    it('reuses senders per queue until released', async () => {
+        let senderCreates = 0;
+        const sender: SenderLike = {
+            sendMessages: async () => {
+                return;
+            },
+            close: async () => {
+                return;
+            }
+        };
+
+        const client: ServiceBusClientLike = {
+            createSender: () => {
+                senderCreates++;
+                return sender;
+            },
+            createReceiver: () => {
+                throw new Error('receiver not needed');
+            },
+            close: async () => {
+                return;
+            }
+        };
+
+        const operations = new AzureMessageOperations(() => client);
+        const payload: QueueMessage = {
+            body: 'hello',
+            messageId: 'msg-1',
+            properties: {},
+            enqueuedTime: '2024-01-02T03:04:05.000Z',
+            deliveryCount: 0,
+            sequenceNumber: '1'
+        };
+
+        await operations.sendMessage('queue-a', 'Endpoint=sb://fake/', payload);
+        await operations.sendMessage('queue-a', 'Endpoint=sb://fake/', payload);
+
+        assert.strictEqual(senderCreates, 1);
+
+        await operations.releaseQueueResources('queue-a', 'Endpoint=sb://fake/');
+        await operations.sendMessage('queue-a', 'Endpoint=sb://fake/', payload);
+
+        assert.strictEqual(senderCreates, 2);
+    });
+
+    it('throws when used after dispose', async () => {
+        const sender: SenderLike = {
+            sendMessages: async () => {
+                return;
+            },
+            close: async () => {
+                return;
+            }
+        };
+
+        const client: ServiceBusClientLike = {
+            createSender: () => sender,
+            createReceiver: () => {
+                throw new Error('receiver not needed');
+            },
+            close: async () => {
+                return;
+            }
+        };
+
+        const operations = new AzureMessageOperations(() => client);
+        const payload: QueueMessage = {
+            body: 'hello',
+            messageId: 'msg-1',
+            properties: {},
+            enqueuedTime: '2024-01-02T03:04:05.000Z',
+            deliveryCount: 0,
+            sequenceNumber: '1'
+        };
+
+        await operations.dispose();
+
+        await assert.rejects(
+            () => operations.sendMessage('queue-a', 'Endpoint=sb://fake/', payload),
+            /disposed/
+        );
     });
 });

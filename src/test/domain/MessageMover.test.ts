@@ -53,6 +53,20 @@ describe('MessageMover', () => {
                 sequenceNumber: '20'
             }
         ]);
+        assert.deepStrictEqual(operations.released, [
+            {
+                queueName: 'target',
+                connectionString: 'Endpoint=sb://target/'
+            },
+            {
+                queueName: 'source-a',
+                connectionString: 'Endpoint=sb://source-a/'
+            },
+            {
+                queueName: 'source-b',
+                connectionString: 'Endpoint=sb://source-b/'
+            }
+        ]);
     });
 
     it('records failures and skips deletes when send fails', async () => {
@@ -98,6 +112,16 @@ describe('MessageMover', () => {
             connectionString: 'Endpoint=sb://source-a/',
             sequenceNumber: '10'
         });
+        assert.deepStrictEqual(operations.released, [
+            {
+                queueName: 'target',
+                connectionString: 'Endpoint=sb://target/'
+            },
+            {
+                queueName: 'source-a',
+                connectionString: 'Endpoint=sb://source-a/'
+            }
+        ]);
     });
 
     it('treats messages without source as successful and skips delete', async () => {
@@ -120,5 +144,11 @@ describe('MessageMover', () => {
         assert.strictEqual(result.successful.length, 1);
         assert.strictEqual(result.failed.length, 0);
         assert.strictEqual(operations.deleted.length, 0);
+        assert.deepStrictEqual(operations.released, [
+            {
+                queueName: 'target',
+                connectionString: 'Endpoint=sb://target/'
+            }
+        ]);
     });
 });

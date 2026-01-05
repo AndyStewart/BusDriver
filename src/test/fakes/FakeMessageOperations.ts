@@ -3,6 +3,8 @@ import type { MessageOperations, QueueMessage } from '../../ports/MessageOperati
 export class FakeMessageOperations implements MessageOperations {
     sent: Array<{ queueName: string; connectionString: string; message: QueueMessage }> = [];
     deleted: Array<{ queueName: string; connectionString: string; sequenceNumber: string }> = [];
+    released: Array<{ queueName: string; connectionString: string }> = [];
+    disposed = false;
     sendFailures = new Set<string>();
     deleteFailures = new Set<string>();
 
@@ -27,5 +29,13 @@ export class FakeMessageOperations implements MessageOperations {
         void connectionString;
         void maxMessages;
         return [];
+    }
+
+    async releaseQueueResources(queueName: string, connectionString: string): Promise<void> {
+        this.released.push({ queueName, connectionString });
+    }
+
+    async dispose(): Promise<void> {
+        this.disposed = true;
     }
 }

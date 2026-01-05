@@ -14,6 +14,8 @@ import { ConnectionsProvider } from './providers/ConnectionsProvider';
 import { QueueMessagesPanel, QueueMessage } from './providers/QueueMessagesPanel';
 import { QueueTreeItem } from './models/Queue';
 
+let messageOperationsForDispose: AzureMessageOperations | undefined;
+
 export function activate(context: vscode.ExtensionContext) {
     console.log('BusDriver extension is now active');
 
@@ -21,6 +23,7 @@ export function activate(context: vscode.ExtensionContext) {
     const connectionService = new ConnectionService(connectionRepository);
     const queueRegistry = new AzureQueueRegistry();
     const messageOperations = new AzureMessageOperations();
+    messageOperationsForDispose = messageOperations;
     const messageSender = new MessageSender(messageOperations);
     const messageMover = new MessageMover(messageSender, messageOperations);
     const messageDeleter = new MessageDeleter(messageOperations);
@@ -270,6 +273,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
     console.log('BusDriver extension is now deactivated');
+    const operations = messageOperationsForDispose;
+    messageOperationsForDispose = undefined;
+    if (operations?.dispose) {
+        void operations.dispose();
+    }
 }
 
 function toMessageWithSource(message: QueueMessage): MessageWithSource {
