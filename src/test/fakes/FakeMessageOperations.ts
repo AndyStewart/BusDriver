@@ -7,6 +7,7 @@ import type {
 export class FakeMessageOperations implements MessageOperations {
     sent: Array<{ queueName: string; connectionString: string; message: QueueMessage }> = [];
     deleted: Array<{ queueName: string; connectionString: string; sequenceNumber: string }> = [];
+    purged: Array<{ queueName: string; connectionString: string }> = [];
     released: Array<{ queueName: string; connectionString: string }> = [];
     disposed = false;
     sendFailures = new Set<string>();
@@ -58,6 +59,11 @@ export class FakeMessageOperations implements MessageOperations {
         void connectionString;
         void maxMessages;
         return [];
+    }
+
+    async purgeQueue(queueName: string, connectionString: string): Promise<number> {
+        this.purged.push({ queueName, connectionString });
+        return 0;
     }
 
     async releaseQueueResources(queueName: string, connectionString: string): Promise<void> {

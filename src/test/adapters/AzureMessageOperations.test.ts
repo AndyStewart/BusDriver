@@ -171,6 +171,66 @@ describe('AzureMessageOperations', () => {
         assert.strictEqual(result.failureReason, 'Message(s) not found in queue');
     });
 
+    it('purges all available messages in batches', async () => {
+        const completed: string[] = [];
+        let receiverClosed = false;
+        let clientClosed = false;
+        let receiveCalls = 0;
+
+        const receiver: ReceiverLike = {
+            receiveMessages: async () => {
+                receiveCalls++;
+                if (receiveCalls === 1) {
+                    return [
+                        { sequenceNumber: '1' },
+                        { sequenceNumber: '2' }
+                    ];
+                }
+
+                if (receiveCalls === 2) {
+                    return [
+                        { sequenceNumber: '3' }
+                    ];
+                }
+
+                return [];
+            },
+            peekMessages: async () => {
+                return [];
+            },
+            completeMessage: async (message) => {
+                completed.push(String(message.sequenceNumber));
+            },
+            abandonMessage: async () => {
+                return;
+            },
+            close: async () => {
+                receiverClosed = true;
+            }
+        };
+
+        const client: ServiceBusClientLike = {
+            createSender: () => {
+                throw new Error('sender not needed');
+            },
+            createReceiver: () => receiver,
+            close: async () => {
+                clientClosed = true;
+            }
+        };
+
+        const operations = new AzureMessageOperations(() => client);
+        const purged = await operations.purgeQueue('queue-a', 'Endpoint=sb://fake/');
+
+        assert.strictEqual(purged, 3);
+        assert.deepStrictEqual(completed, ['1', '2', '3']);
+        assert.strictEqual(receiverClosed, true);
+        assert.strictEqual(clientClosed, false);
+
+        await operations.dispose();
+        assert.strictEqual(clientClosed, true);
+    });
+
     it('peeks messages and maps metadata', async () => {
         let receiverClosed = false;
         let clientClosed = false;

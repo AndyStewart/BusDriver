@@ -151,6 +151,34 @@ export class AzureMessageOperations implements MessageOperations {
         }
     }
 
+    async purgeQueue(queueName: string, connectionString: string): Promise<number> {
+        const receiver = this.clientPool.getReceiver(connectionString, queueName);
+        let purgedCount = 0;
+        let hasMoreMessages = true;
+
+        try {
+            while (hasMoreMessages) {
+                const messages = await receiver.receiveMessages(DEFAULT_DELETE_BATCH_SIZE, {
+                    maxWaitTimeInMs: DEFAULT_DELETE_MAX_WAIT_TIME_MS
+                });
+
+                if (messages.length === 0) {
+                    hasMoreMessages = false;
+                    continue;
+                }
+
+                for (const message of messages) {
+                    await receiver.completeMessage(message);
+                    purgedCount++;
+                }
+            }
+
+            return purgedCount;
+        } finally {
+            await this.clientPool.releaseQueueResources(connectionString, queueName);
+        }
+    }
+
     async releaseQueueResources(queueName: string, connectionString: string): Promise<void> {
         await this.clientPool.releaseQueueResources(connectionString, queueName);
     }

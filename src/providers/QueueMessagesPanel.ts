@@ -73,6 +73,13 @@ export class QueueMessagesPanel {
                         await vscode.commands.executeCommand('busdriver.deleteMessages', messages);
                         return;
                     }
+                    case 'purgeQueue': {
+                        await vscode.commands.executeCommand('busdriver.purgeQueue', {
+                            queue: this.queue,
+                            connectionString: this.connectionString
+                        });
+                        return;
+                    }
                 }
             },
             null,
@@ -400,6 +407,18 @@ export class QueueMessagesPanel {
                         opacity: 0.5;
                         cursor: not-allowed;
                     }
+                    .purge-button {
+                        background-color: var(--vscode-errorForeground);
+                        color: var(--vscode-editor-background);
+                        margin-left: 8px;
+                    }
+                    .purge-button:hover {
+                        opacity: 0.8;
+                    }
+                    .purge-button:disabled {
+                        opacity: 0.5;
+                        cursor: not-allowed;
+                    }
                 </style>
             </head>
             <body>
@@ -410,6 +429,7 @@ export class QueueMessagesPanel {
                     </div>
                     <div>
                         <button id="deleteButton" class="delete-button" onclick="deleteSelectedMessages()" disabled>Delete Message...</button>
+                        <button id="purgeButton" class="purge-button" onclick="purgeQueue()">Purge Queue...</button>
                         <button id="moveButton" class="move-button" onclick="moveSelectedMessage()" disabled>Move to Queue...</button>
                         <button onclick="refresh()">Refresh</button>
                     </div>
@@ -435,6 +455,11 @@ export class QueueMessagesPanel {
                     const messages = ${messagesJson};
                     let selectedRows = new Set();
                     let lastSelectedIndex = null;
+
+                    const purgeButton = document.getElementById('purgeButton');
+                    if (purgeButton) {
+                        purgeButton.disabled = messages.length === 0;
+                    }
 
                     function refresh() {
                         vscode.postMessage({ command: 'refresh' });
@@ -629,6 +654,10 @@ export class QueueMessagesPanel {
                             command: 'deleteMessages',
                             data: selectedMessages
                         });
+                    }
+
+                    function purgeQueue() {
+                        vscode.postMessage({ command: 'purgeQueue' });
                     }
 
                     // Drag and drop handlers
