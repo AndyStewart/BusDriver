@@ -2,7 +2,8 @@ import type {
     ReceiverLike,
     SenderLike,
     ServiceBusClientFactory,
-    ServiceBusClientLike
+    ServiceBusClientLike,
+    ServiceBusReceiverOptions
 } from './AzureMessageOperations';
 
 interface ClientEntry {
@@ -42,9 +43,13 @@ export class AzureClientFactory {
         return receiver;
     }
 
-    getTemporaryReceiver(connectionString: string, queueName: string): ReceiverLike {
+    getTemporaryReceiver(
+        connectionString: string,
+        queueName: string,
+        options?: ServiceBusReceiverOptions
+    ): ReceiverLike {
         const entry = this.getEntry(connectionString);
-        return entry.client.createReceiver(queueName);
+        return entry.client.createReceiver(queueName, options);
     }
 
     async releaseQueueResources(connectionString: string, queueName: string): Promise<void> {

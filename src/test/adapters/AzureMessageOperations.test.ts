@@ -19,7 +19,7 @@ describe('AzureMessageOperations', () => {
 
         const client: ServiceBusClientLike = {
             createSender: () => sender,
-            createReceiver: () => {
+            createReceiver: (_queueName, _options) => {
                 throw new Error('receiver not needed');
             },
             close: async () => {
@@ -91,7 +91,7 @@ describe('AzureMessageOperations', () => {
             createSender: () => {
                 throw new Error('sender not needed');
             },
-            createReceiver: () => receiver,
+            createReceiver: (_queueName, _options) => receiver,
             close: async () => {
                 clientClosed = true;
             }
@@ -149,7 +149,7 @@ describe('AzureMessageOperations', () => {
             createSender: () => {
                 throw new Error('sender not needed');
             },
-            createReceiver: () => receiver,
+            createReceiver: (_queueName, _options) => receiver,
             close: async () => {
                 return;
             }
@@ -172,10 +172,10 @@ describe('AzureMessageOperations', () => {
     });
 
     it('purges all available messages in batches', async () => {
-        const completed: string[] = [];
         let receiverClosed = false;
         let clientClosed = false;
         let receiveCalls = 0;
+        let receiveMode: string | undefined;
 
         const receiver: ReceiverLike = {
             receiveMessages: async () => {
@@ -198,8 +198,8 @@ describe('AzureMessageOperations', () => {
             peekMessages: async () => {
                 return [];
             },
-            completeMessage: async (message) => {
-                completed.push(String(message.sequenceNumber));
+            completeMessage: async () => {
+                throw new Error('complete not expected for receiveAndDelete');
             },
             abandonMessage: async () => {
                 return;
@@ -213,7 +213,10 @@ describe('AzureMessageOperations', () => {
             createSender: () => {
                 throw new Error('sender not needed');
             },
-            createReceiver: () => receiver,
+            createReceiver: (_queueName, options) => {
+                receiveMode = options?.receiveMode;
+                return receiver;
+            },
             close: async () => {
                 clientClosed = true;
             }
@@ -223,7 +226,7 @@ describe('AzureMessageOperations', () => {
         const purged = await operations.purgeQueue('queue-a', 'Endpoint=sb://fake/');
 
         assert.strictEqual(purged, 3);
-        assert.deepStrictEqual(completed, ['1', '2', '3']);
+        assert.strictEqual(receiveMode, 'receiveAndDelete');
         assert.strictEqual(receiverClosed, true);
         assert.strictEqual(clientClosed, false);
 
@@ -268,7 +271,7 @@ describe('AzureMessageOperations', () => {
             createSender: () => {
                 throw new Error('sender not needed');
             },
-            createReceiver: () => receiver,
+            createReceiver: (_queueName, _options) => receiver,
             close: async () => {
                 clientClosed = true;
             }
@@ -303,7 +306,7 @@ describe('AzureMessageOperations', () => {
             createSender: () => {
                 throw new Error('sender not needed');
             },
-            createReceiver: () => {
+            createReceiver: (_queueName, _options) => {
                 receiverCreates++;
                 const receiverState = { closed: false };
                 receivers.push(receiverState);
@@ -356,7 +359,7 @@ describe('AzureMessageOperations', () => {
                 senderCreates++;
                 return sender;
             },
-            createReceiver: () => {
+            createReceiver: (_queueName, _options) => {
                 throw new Error('receiver not needed');
             },
             close: async () => {
@@ -397,7 +400,7 @@ describe('AzureMessageOperations', () => {
 
         const client: ServiceBusClientLike = {
             createSender: () => sender,
-            createReceiver: () => {
+            createReceiver: (_queueName, _options) => {
                 throw new Error('receiver not needed');
             },
             close: async () => {

@@ -37,8 +37,12 @@ export interface ReceivedMessageLike {
 
 export interface ServiceBusClientLike {
     createSender(queueName: string): SenderLike;
-    createReceiver(queueName: string): ReceiverLike;
+    createReceiver(queueName: string, options?: ServiceBusReceiverOptions): ReceiverLike;
     close(): Promise<void>;
+}
+
+export interface ServiceBusReceiverOptions {
+    receiveMode?: 'peekLock' | 'receiveAndDelete';
 }
 
 export type ServiceBusClientFactory = (connectionString: string) => ServiceBusClientLike;
@@ -162,7 +166,9 @@ export class AzureMessageOperations implements MessageOperations {
     }
 
     async purgeQueue(queueName: string, connectionString: string): Promise<number> {
-        const receiver = this.clientPool.getReceiver(connectionString, queueName);
+        const receiver = this.clientPool.getTemporaryReceiver(connectionString, queueName, {
+            receiveMode: 'receiveAndDelete'
+        });
         let purgedCount = 0;
         let hasMoreMessages = true;
 
@@ -177,15 +183,12 @@ export class AzureMessageOperations implements MessageOperations {
                     continue;
                 }
 
-                for (const message of messages) {
-                    await receiver.completeMessage(message);
-                    purgedCount++;
-                }
+                purgedCount += messages.length;
             }
 
             return purgedCount;
         } finally {
-            await this.clientPool.releaseQueueResources(connectionString, queueName);
+            await receiver.close();
         }
     }
 
