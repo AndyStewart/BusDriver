@@ -8,8 +8,18 @@
   - `tsconfig.json:1` — TypeScript compiler options.
   - `.github/workflows/ci.yml:1` — CI steps and `xvfb-run` usage for tests.
   - `src/` — main source code.
-  - `test/` or `out/test` — test sources/compiled tests (compiled tests are placed in `out` by `compile-tests`).
+  - `src/test/` or `out/test` — test sources/compiled tests (compiled tests are placed in `out` by `compile-tests`).
 - If you need details on any file referenced, open the file path above.
+
+**Ports & Adapters Architecture**
+- BusDriver follows a hexagonal (ports and adapters) structure to keep domain logic isolated from VS Code and Azure SDK details.
+- Core layers and locations:
+  - `src/domain/` — domain services and models (no VS Code/Azure imports).
+  - `src/ports/` — TypeScript interfaces for dependencies (`ConnectionRepository`, `QueueRegistry`, `MessageOperations`, `Logger`, `Telemetry`).
+  - `src/adapters/vscode/` — VS Code adapters (e.g., `VsCodeConnectionRepository`, `VsCodeTelemetry`).
+  - `src/adapters/azure/` — Azure Service Bus adapters (e.g., `AzureQueueRegistry`, `AzureMessageOperations`).
+- Composition happens in `src/extension.ts` and providers/commands should depend on domain services and ports, not SDKs directly.
+- Tests: use fakes/in-memory adapters in `src/test/fakes/` and adapter unit tests in `src/test/adapters/`.
 
 **Quick Commands**
 - Install dependencies
@@ -121,6 +131,11 @@
   - If the repo already uses `I` prefixes widely, maintain consistency until a coordinated rename is performed.
 
 **Testing Guidelines**
+- TDD requirement for new features/defects:
+  - Write a test first.
+  - Run it and confirm it fails.
+  - Implement the change to make it pass.
+  - Refactor code/tests to improve design and keep tests green.
 - Unit vs Integration
   - Unit tests: prefer running with `mocha` on compiled JS in `out/test` for speed; mock external services (Azure Service Bus).
   - Integration tests: use `npm test` (vscode-test) — these may spin up VS Code and are slower.
