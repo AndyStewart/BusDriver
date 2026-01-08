@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import { Queue } from '../models/Queue';
 import type { MessageOperations, QueueMessage as PortQueueMessage } from '../ports/MessageOperations';
-import {
-    buildMessageGridHeaders,
-    buildPropertyRowCells,
-    normalizePropertyColumns
-} from './messageGridColumns';
+import type {
+    MessageGridColumnsService,
+    MessageGridMessage,
+    MessageGridViewModel
+} from '../domain/messageGrid/MessageGridColumnsService';
 
 export interface QueueMessage {
     sequenceNumber: string;
@@ -29,7 +29,8 @@ export class QueueMessagesPanel {
         private readonly queue: Queue,
         private readonly connectionString: string,
         private readonly messageOperations: MessageOperations,
-        private readonly extensionUri: vscode.Uri
+        private readonly extensionUri: vscode.Uri,
+        private readonly messageGridColumnsService: MessageGridColumnsService
     ) {
         this._panel = panel;
 
@@ -107,7 +108,8 @@ export class QueueMessagesPanel {
         extensionUri: vscode.Uri,
         queue: Queue,
         connectionString: string,
-        messageOperations: MessageOperations
+        messageOperations: MessageOperations,
+        messageGridColumnsService: MessageGridColumnsService
     ) {
         const column = vscode.window.activeTextEditor
             ? vscode.window.activeTextEditor.viewColumn
@@ -138,7 +140,8 @@ export class QueueMessagesPanel {
             queue,
             connectionString,
             messageOperations,
-            extensionUri
+            extensionUri,
+            messageGridColumnsService
         );
     }
 
@@ -175,7 +178,9 @@ export class QueueMessagesPanel {
     private async _getHtmlForWebview(): Promise<string> {
         try {
             const messages = await this._peekMessages();
-            const propertyColumns = this._getPropertyColumns();
+            const viewModel = await this.messageGridColumnsService.buildMessageGridView(
+                messages.map(message => this._toGridMessage(message))
+            );
             const messagesJson = JSON.stringify(messages.map(msg => {
                 let bodyContent: string;
                 if (typeof msg.body === 'string') {
@@ -453,7 +458,7 @@ export class QueueMessagesPanel {
                     </div>
                 </div>
                 <div class="grid-container" id="gridContainer">
-                    ${this._generateMessageTable(messages, propertyColumns)}
+                    ${this._generateMessageTable(messages, viewModel)}
                 </div>
                 <div class="splitter" id="splitter"></div>
                 <div class="details-container" id="detailsContainer">
@@ -768,34 +773,31 @@ export class QueueMessagesPanel {
         }
     }
 
-    private _generateMessageTable(messages: PortQueueMessage[], propertyColumns: string[]): string {
+    private _generateMessageTable(messages: PortQueueMessage[], viewModel: MessageGridViewModel): string {
         if (messages.length === 0) {
             return '<div class="no-messages">No messages in queue</div>';
         }
 
-        const headers = buildMessageGridHeaders(propertyColumns);
-        const rows = messages.map(msg => {
-            const enqueuedTime = msg.enqueuedTime || 'N/A';
-            const propertyCells = buildPropertyRowCells(msg.properties, propertyColumns)
-                .map(value => `<td>${this._escapeHtml(value)}</td>`)
-                .join('');
+        const rows = viewModel.rows.map(cells => {
+            const rowCells = cells.map((cell, index) => {
+                const value = this._escapeHtml(cell);
+                if (index === 0) {
+                    return `<td class="sequence-number">${value}</td>`;
+                }
+                if (index === 1) {
+                    return `<td class="message-id">${value}</td>`;
+                }
+                return `<td>${value}</td>`;
+            }).join('');
 
-            return `
-                <tr>
-                    <td class="sequence-number">${msg.sequenceNumber?.toString() || 'N/A'}</td>
-                    <td class="message-id">${this._escapeHtml(msg.messageId?.toString() || 'N/A')}</td>
-                    <td>${enqueuedTime}</td>
-                    <td>${msg.deliveryCount || 0}</td>
-                    ${propertyCells}
-                </tr>
-            `;
+            return `<tr>${rowCells}</tr>`;
         }).join('');
 
         return `
             <table>
                 <thead>
                     <tr>
-                        ${headers.map(header => `<th>${this._escapeHtml(header)}</th>`).join('')}
+                        ${viewModel.headers.map(header => `<th>${this._escapeHtml(header)}</th>`).join('')}
                     </tr>
                 </thead>
                 <tbody>
@@ -809,9 +811,14 @@ export class QueueMessagesPanel {
         return this.messageOperations.peekMessages(this.queue.name, this.connectionString, 50);
     }
 
-    private _getPropertyColumns(): string[] {
-        const config = vscode.workspace.getConfiguration('busdriver');
-        return normalizePropertyColumns(config.get('messageGrid.propertyColumns'));
+    private _toGridMessage(message: PortQueueMessage): MessageGridMessage {
+        return {
+            sequenceNumber: message.sequenceNumber,
+            messageId: message.messageId,
+            enqueuedTime: message.enqueuedTime,
+            deliveryCount: message.deliveryCount,
+            properties: message.properties
+        };
     }
 
     private _escapeHtml(unsafe: string): string {

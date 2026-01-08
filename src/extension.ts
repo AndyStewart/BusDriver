@@ -3,8 +3,10 @@ import { AzureMessageOperations } from './adapters/azure/AzureMessageOperations'
 import { AzureQueueRegistry } from './adapters/azure/AzureQueueRegistry';
 import { VsCodeConnectionRepository } from './adapters/vscode/VsCodeConnectionRepository';
 import { VsCodeLogger } from './adapters/vscode/VsCodeLogger';
+import { VsCodeMessageGridColumnsRepository } from './adapters/vscode/VsCodeMessageGridColumnsRepository';
 import { VsCodeTelemetry } from './adapters/vscode/VsCodeTelemetry';
 import { ConnectionService } from './domain/connections/ConnectionService';
+import { MessageGridColumnsService } from './domain/messageGrid/MessageGridColumnsService';
 import { MessageDeleter } from './domain/messages/MessageDeleter';
 import { MessageMover } from './domain/messages/MessageMover';
 import { MessageSender } from './domain/messages/MessageSender';
@@ -13,7 +15,6 @@ import { QueueRegistryService } from './domain/queues/QueueRegistryService';
 import { ConnectionsProvider } from './providers/ConnectionsProvider';
 import { QueueMessagesPanel, QueueMessage } from './providers/QueueMessagesPanel';
 import { Queue, QueueTreeItem } from './models/Queue';
-import { normalizePropertyColumns } from './providers/messageGridColumns';
 
 let messageOperationsForDispose: AzureMessageOperations | undefined;
 
@@ -31,6 +32,8 @@ export function activate(context: vscode.ExtensionContext) {
     const queueRegistryService = new QueueRegistryService(queueRegistry, connectionRepository);
     const logger = new VsCodeLogger();
     const telemetry = new VsCodeTelemetry();
+    const messageGridColumnsRepository = new VsCodeMessageGridColumnsRepository();
+    const messageGridColumnsService = new MessageGridColumnsService(messageGridColumnsRepository);
 
     // Create the connections provider
     const connectionsProvider = new ConnectionsProvider(
@@ -72,8 +75,7 @@ export function activate(context: vscode.ExtensionContext) {
     const configureMessageGridColumnsCommand = vscode.commands.registerCommand(
         'busdriver.configureMessageGridColumns',
         async () => {
-            const config = vscode.workspace.getConfiguration('busdriver');
-            const currentColumns = config.get<string[]>('messageGrid.propertyColumns') ?? [];
+            const currentColumns = await messageGridColumnsService.getPropertyColumns();
             const input = await vscode.window.showInputBox({
                 prompt: 'Enter comma-separated application property keys to show as columns',
                 value: currentColumns.join(', '),
@@ -84,12 +86,7 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            const normalizedColumns = normalizePropertyColumns(input.split(','));
-            await config.update(
-                'messageGrid.propertyColumns',
-                normalizedColumns,
-                vscode.ConfigurationTarget.Global
-            );
+            await messageGridColumnsService.updatePropertyColumnsFromInput(input);
         }
     );
 
@@ -102,7 +99,8 @@ export function activate(context: vscode.ExtensionContext) {
                     context.extensionUri,
                     item.queue,
                     connectionString,
-                    messageOperations
+                    messageOperations,
+                    messageGridColumnsService
                 );
             } else {
                 vscode.window.showErrorMessage('Connection string not found');
@@ -320,7 +318,8 @@ export function activate(context: vscode.ExtensionContext) {
                         context.extensionUri,
                         selected.queue,
                         connectionString,
-                        messageOperations
+                        messageOperations,
+                        messageGridColumnsService
                     );
                 }
             }
