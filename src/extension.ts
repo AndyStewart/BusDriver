@@ -12,7 +12,7 @@ import type { MessageWithSource } from './domain/messages/MessageTypes';
 import { QueueRegistryService } from './domain/queues/QueueRegistryService';
 import { ConnectionsProvider } from './providers/ConnectionsProvider';
 import { QueueMessagesPanel, QueueMessage } from './providers/QueueMessagesPanel';
-import { QueueTreeItem } from './models/Queue';
+import { Queue, QueueTreeItem } from './models/Queue';
 
 let messageOperationsForDispose: AzureMessageOperations | undefined;
 
@@ -241,6 +241,49 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    const purgeQueueCommand = vscode.commands.registerCommand(
+        'busdriver.purgeQueue',
+        async (payload: { queue: Queue; connectionString: string }) => {
+            const queue = payload?.queue;
+            const connectionString = payload?.connectionString?.trim();
+
+            if (!queue || !connectionString) {
+                vscode.window.showErrorMessage('Cannot purge queue: queue information missing');
+                return;
+            }
+
+            const confirmation = await vscode.window.showWarningMessage(
+                `Purge all messages from ${queue.name}? This cannot be undone.`,
+                { modal: true },
+                'Purge'
+            );
+
+            if (confirmation !== 'Purge') {
+                return;
+            }
+
+            const purgedCount = await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Purging ${queue.name}...`,
+                cancellable: false
+            }, async () => {
+                return messageOperations.purgeQueue(queue.name, connectionString);
+            });
+
+            const resultMessage = purgedCount === 0
+                ? `No messages found in ${queue.name} to purge.`
+                : `Purged ${purgedCount} message${purgedCount === 1 ? '' : 's'} from ${queue.name}.`;
+
+            vscode.window.showInformationMessage(resultMessage);
+
+            if (QueueMessagesPanel.currentPanel) {
+                await QueueMessagesPanel.currentPanel.refreshView();
+            }
+
+            connectionsProvider.refresh();
+        }
+    );
+
     // Handle double-click on queue items
     treeView.onDidChangeSelection(async (e) => {
         if (e.selection.length > 0) {
@@ -267,7 +310,8 @@ export function activate(context: vscode.ExtensionContext) {
         deleteConnectionCommand,
         showQueueMessagesCommand,
         moveMessageToQueueCommand,
-        deleteMessagesCommand
+        deleteMessagesCommand,
+        purgeQueueCommand
     );
 }
 

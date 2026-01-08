@@ -8,6 +8,7 @@ export interface MessageOperations {
         options?: DeleteMessagesOptions
     ): Promise<DeleteMessagesResult>;
     peekMessages(queueName: string, connectionString: string, maxMessages: number): Promise<QueueMessage[]>;
+    purgeQueue(queueName: string, connectionString: string): Promise<number>;
     releaseQueueResources?(queueName: string, connectionString: string): Promise<void>;
     dispose?(): Promise<void>;
 }
