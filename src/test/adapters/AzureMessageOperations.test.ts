@@ -19,7 +19,7 @@ describe('AzureMessageOperations', () => {
 
         const client: ServiceBusClientLike = {
             createSender: () => sender,
-            createReceiver: (_queueName, _options) => {
+            createReceiver: () => {
                 throw new Error('receiver not needed');
             },
             close: async () => {
@@ -91,7 +91,7 @@ describe('AzureMessageOperations', () => {
             createSender: () => {
                 throw new Error('sender not needed');
             },
-            createReceiver: (_queueName, _options) => receiver,
+            createReceiver: () => receiver,
             close: async () => {
                 clientClosed = true;
             }
@@ -149,7 +149,7 @@ describe('AzureMessageOperations', () => {
             createSender: () => {
                 throw new Error('sender not needed');
             },
-            createReceiver: (_queueName, _options) => receiver,
+            createReceiver: () => receiver,
             close: async () => {
                 return;
             }
@@ -214,6 +214,7 @@ describe('AzureMessageOperations', () => {
                 throw new Error('sender not needed');
             },
             createReceiver: (_queueName, options) => {
+                void _queueName;
                 receiveMode = options?.receiveMode;
                 return receiver;
             },
@@ -271,7 +272,7 @@ describe('AzureMessageOperations', () => {
             createSender: () => {
                 throw new Error('sender not needed');
             },
-            createReceiver: (_queueName, _options) => receiver,
+            createReceiver: () => receiver,
             close: async () => {
                 clientClosed = true;
             }
@@ -306,7 +307,7 @@ describe('AzureMessageOperations', () => {
             createSender: () => {
                 throw new Error('sender not needed');
             },
-            createReceiver: (_queueName, _options) => {
+            createReceiver: () => {
                 receiverCreates++;
                 const receiverState = { closed: false };
                 receivers.push(receiverState);
@@ -359,7 +360,7 @@ describe('AzureMessageOperations', () => {
                 senderCreates++;
                 return sender;
             },
-            createReceiver: (_queueName, _options) => {
+            createReceiver: () => {
                 throw new Error('receiver not needed');
             },
             close: async () => {
@@ -400,7 +401,7 @@ describe('AzureMessageOperations', () => {
 
         const client: ServiceBusClientLike = {
             createSender: () => sender,
-            createReceiver: (_queueName, _options) => {
+            createReceiver: () => {
                 throw new Error('receiver not needed');
             },
             close: async () => {
