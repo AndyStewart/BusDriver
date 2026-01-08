@@ -42,6 +42,11 @@ export class AzureClientFactory {
         return receiver;
     }
 
+    getTemporaryReceiver(connectionString: string, queueName: string): ReceiverLike {
+        const entry = this.getEntry(connectionString);
+        return entry.client.createReceiver(queueName);
+    }
+
     async releaseQueueResources(connectionString: string, queueName: string): Promise<void> {
         const entry = this.clients.get(connectionString);
         if (!entry || entry.disposed) {

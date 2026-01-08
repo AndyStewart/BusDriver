@@ -21,8 +21,10 @@ export interface QueueMessage {
 export class QueueMessagesPanel {
     public static currentPanel: QueueMessagesPanel | undefined;
     public static pendingDragMessage: QueueMessage | QueueMessage[] | undefined;
+    private static readonly pageSize = 50;
     private readonly _panel: vscode.WebviewPanel;
     private _disposables: vscode.Disposable[] = [];
+    private _isLoadingMore = false;
 
     private constructor(
         panel: vscode.WebviewPanel,
@@ -47,6 +49,9 @@ export class QueueMessagesPanel {
                 switch (message.command) {
                     case 'refresh':
                         this._update();
+                        return;
+                    case 'loadMore':
+                        await this._loadMoreMessages(message.data?.fromSequenceNumber);
                         return;
                     case 'configureColumns':
                         await vscode.commands.executeCommand('busdriver.configureMessageGridColumns');
@@ -177,34 +182,12 @@ export class QueueMessagesPanel {
 
     private async _getHtmlForWebview(): Promise<string> {
         try {
-            const messages = await this._peekMessages();
+            const messages = await this._peekMessages('1');
             const viewModel = await this.messageGridColumnsService.buildMessageGridView(
                 messages.map(message => this._toGridMessage(message))
             );
-            const messagesJson = JSON.stringify(messages.map(msg => {
-                let bodyContent: string;
-                if (typeof msg.body === 'string') {
-                    bodyContent = msg.body;
-                } else if (Buffer.isBuffer(msg.body)) {
-                    try {
-                        const parsed = JSON.parse(msg.body.toString().trim());
-                        bodyContent = JSON.stringify(parsed, null, 2);
-                    } catch {
-                        bodyContent = msg.body.toString();
-                    }
-                } else {
-                    bodyContent = JSON.stringify(msg.body, null, 2);
-                }
-
-                return {
-                    sequenceNumber: msg.sequenceNumber?.toString() || 'N/A',
-                    messageId: msg.messageId?.toString() || 'N/A',
-                    enqueuedTime: msg.enqueuedTime || 'N/A',
-                    deliveryCount: msg.deliveryCount ?? 0,
-                    body: bodyContent,
-                    properties: msg.properties || {}
-                };
-            }));
+            const formattedMessages = messages.map(message => this._formatMessageForView(message));
+            const messagesJson = JSON.stringify(formattedMessages);
 
             return `<!DOCTYPE html>
             <html lang="en">
@@ -447,7 +430,7 @@ export class QueueMessagesPanel {
                 <div class="header">
                     <div>
                         <h1>Queue: ${this.queue.name}</h1>
-                        <span class="message-count">${messages.length} message(s) peeked</span>
+                        <span class="message-count" id="messageCount">${messages.length} message(s) peeked</span>
                     </div>
                     <div>
                         <button id="deleteButton" class="delete-button" onclick="deleteSelectedMessages()" disabled>Delete Message...</button>
@@ -476,8 +459,13 @@ export class QueueMessagesPanel {
                 <script>
                     const vscode = acquireVsCodeApi();
                     const messages = ${messagesJson};
+                    const PAGE_SIZE = ${QueueMessagesPanel.pageSize};
                     let selectedRows = new Set();
                     let lastSelectedIndex = null;
+                    let hasMore = messages.length === PAGE_SIZE;
+                    let isLoadingMore = false;
+
+                    const messageCount = document.getElementById('messageCount');
 
                     const purgeButton = document.getElementById('purgeButton');
                     if (purgeButton) {
@@ -490,6 +478,12 @@ export class QueueMessagesPanel {
 
                     function configureColumns() {
                         vscode.postMessage({ command: 'configureColumns' });
+                    }
+
+                    function updateMessageCount() {
+                        if (messageCount) {
+                            messageCount.textContent = messages.length + ' message(s) peeked';
+                        }
                     }
 
                     // Splitter functionality
@@ -737,14 +731,93 @@ export class QueueMessagesPanel {
                         console.log('Drag started with ' + count + ' message(s)');
                     }
 
+                    function wireRow(row, index) {
+                        row.addEventListener('click', (e) => selectMessage(index, e));
+                        row.setAttribute('draggable', 'true');
+                        row.addEventListener('dragstart', (e) => handleDragStart(e, index));
+                    }
+
+                    function buildRow(cells, index) {
+                        const row = document.createElement('tr');
+                        cells.forEach((cell, cellIndex) => {
+                            const td = document.createElement('td');
+                            td.textContent = cell;
+                            if (cellIndex === 0) {
+                                td.classList.add('sequence-number');
+                            } else if (cellIndex === 1) {
+                                td.classList.add('message-id');
+                            }
+                            row.appendChild(td);
+                        });
+                        wireRow(row, index);
+                        return row;
+                    }
+
+                    function appendMessages(newMessages, newRows, moreAvailable) {
+                        const tbody = document.querySelector('tbody');
+                        if (!tbody || !Array.isArray(newMessages) || !Array.isArray(newRows)) {
+                            hasMore = Boolean(moreAvailable);
+                            isLoadingMore = false;
+                            return;
+                        }
+
+                        newRows.forEach((cells, index) => {
+                            const messageIndex = messages.length + index;
+                            const row = buildRow(cells, messageIndex);
+                            tbody.appendChild(row);
+                        });
+
+                        messages.push(...newMessages);
+                        hasMore = Boolean(moreAvailable);
+                        isLoadingMore = false;
+                        updateMessageCount();
+                    }
+
+                    function requestMoreMessages() {
+                        if (!hasMore || isLoadingMore || messages.length === 0) {
+                            return;
+                        }
+
+                        const lastMessage = messages[messages.length - 1];
+                        if (!lastMessage || !lastMessage.sequenceNumber) {
+                            hasMore = false;
+                            return;
+                        }
+
+                        isLoadingMore = true;
+                        vscode.postMessage({
+                            command: 'loadMore',
+                            data: { fromSequenceNumber: lastMessage.sequenceNumber }
+                        });
+                    }
+
+                    window.addEventListener('message', event => {
+                        const message = event.data;
+                        if (!message || !message.command) {
+                            return;
+                        }
+
+                        if (message.command === 'appendMessages') {
+                            appendMessages(message.messages, message.rows, message.hasMore);
+                        }
+                    });
+
                     // Add click and drag handlers to table rows
                     document.addEventListener('DOMContentLoaded', () => {
                         const rows = document.querySelectorAll('tbody tr');
                         rows.forEach((row, index) => {
-                            row.addEventListener('click', (e) => selectMessage(index, e));
-                            row.setAttribute('draggable', 'true');
-                            row.addEventListener('dragstart', (e) => handleDragStart(e, index));
+                            wireRow(row, index);
                         });
+
+                        const gridContainer = document.getElementById('gridContainer');
+                        if (gridContainer) {
+                            gridContainer.addEventListener('scroll', () => {
+                                const remaining = gridContainer.scrollHeight - gridContainer.scrollTop - gridContainer.clientHeight;
+                                if (remaining < 200) {
+                                    requestMoreMessages();
+                                }
+                            });
+                        }
                     });
                 </script>
             </body>
@@ -807,8 +880,58 @@ export class QueueMessagesPanel {
         `;
     }
 
-    private async _peekMessages(): Promise<PortQueueMessage[]> {
-        return this.messageOperations.peekMessages(this.queue.name, this.connectionString, 50);
+    private async _loadMoreMessages(fromSequenceNumber?: string): Promise<void> {
+        if (this._isLoadingMore) {
+            return;
+        }
+
+        const nextSequenceNumber = this._getNextSequenceNumber(fromSequenceNumber);
+        if (!nextSequenceNumber) {
+            this._panel.webview.postMessage({
+                command: 'appendMessages',
+                rows: [],
+                messages: [],
+                hasMore: false
+            });
+            return;
+        }
+
+        this._isLoadingMore = true;
+        try {
+            const messages = await this._peekMessages(nextSequenceNumber);
+            const viewModel = await this.messageGridColumnsService.buildMessageGridView(
+                messages.map(message => this._toGridMessage(message))
+            );
+            const formattedMessages = messages.map(message => this._formatMessageForView(message));
+
+            this._panel.webview.postMessage({
+                command: 'appendMessages',
+                rows: viewModel.rows,
+                messages: formattedMessages,
+                hasMore: messages.length === QueueMessagesPanel.pageSize
+            });
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`Failed to load more messages: ${errorMessage}`);
+            this._panel.webview.postMessage({
+                command: 'appendMessages',
+                rows: [],
+                messages: [],
+                hasMore: false
+            });
+        } finally {
+            this._isLoadingMore = false;
+        }
+    }
+
+    private async _peekMessages(fromSequenceNumber: string): Promise<PortQueueMessage[]> {
+        const options = { fromSequenceNumber };
+        return this.messageOperations.peekMessages(
+            this.queue.name,
+            this.connectionString,
+            QueueMessagesPanel.pageSize,
+            options
+        );
     }
 
     private _toGridMessage(message: PortQueueMessage): MessageGridMessage {
@@ -819,6 +942,47 @@ export class QueueMessagesPanel {
             deliveryCount: message.deliveryCount,
             properties: message.properties
         };
+    }
+
+    private _formatMessageForView(message: PortQueueMessage): QueueMessage {
+        let bodyContent: string;
+        if (typeof message.body === 'string') {
+            bodyContent = message.body;
+        } else if (Buffer.isBuffer(message.body)) {
+            try {
+                const parsed = JSON.parse(message.body.toString().trim());
+                bodyContent = JSON.stringify(parsed, null, 2);
+            } catch {
+                bodyContent = message.body.toString();
+            }
+        } else {
+            bodyContent = JSON.stringify(message.body, null, 2);
+        }
+
+        return {
+            sequenceNumber: message.sequenceNumber?.toString() || 'N/A',
+            messageId: message.messageId?.toString() || 'N/A',
+            enqueuedTime: message.enqueuedTime || 'N/A',
+            deliveryCount: message.deliveryCount ?? 0,
+            body: bodyContent,
+            properties: message.properties || {}
+        };
+    }
+
+    private _getNextSequenceNumber(sequenceNumber?: string): string | undefined {
+        if (!sequenceNumber) {
+            return undefined;
+        }
+
+        if (!/^\d+$/.test(sequenceNumber)) {
+            return undefined;
+        }
+
+        try {
+            return (BigInt(sequenceNumber) + 1n).toString();
+        } catch {
+            return undefined;
+        }
     }
 
     private _escapeHtml(unsafe: string): string {

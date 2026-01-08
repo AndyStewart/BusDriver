@@ -1,6 +1,7 @@
 import type {
     DeleteMessagesResult,
     MessageOperations,
+    PeekMessagesOptions,
     QueueMessage
 } from '../../ports/MessageOperations';
 
@@ -54,10 +55,16 @@ export class FakeMessageOperations implements MessageOperations {
         };
     }
 
-    async peekMessages(queueName: string, connectionString: string, maxMessages: number): Promise<QueueMessage[]> {
+    async peekMessages(
+        queueName: string,
+        connectionString: string,
+        maxMessages: number,
+        options?: PeekMessagesOptions
+    ): Promise<QueueMessage[]> {
         void queueName;
         void connectionString;
         void maxMessages;
+        void options;
         return [];
     }
 

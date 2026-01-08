@@ -234,6 +234,7 @@ describe('AzureMessageOperations', () => {
     it('peeks messages and maps metadata', async () => {
         let receiverClosed = false;
         let clientClosed = false;
+        let peekFromSequence: string | undefined;
 
         const receiver: ReceiverLike = {
             receiveMessages: async () => {
@@ -245,7 +246,8 @@ describe('AzureMessageOperations', () => {
             abandonMessage: async () => {
                 return;
             },
-            peekMessages: async () => {
+            peekMessages: async (_maxMessages, options) => {
+                peekFromSequence = options?.fromSequenceNumber?.toString();
                 return [
                     {
                         sequenceNumber: 7,
@@ -273,7 +275,7 @@ describe('AzureMessageOperations', () => {
         };
 
         const operations = new AzureMessageOperations(() => client);
-        const result = await operations.peekMessages('queue-a', 'Endpoint=sb://fake/', 50);
+        const result = await operations.peekMessages('queue-a', 'Endpoint=sb://fake/', 50, { fromSequenceNumber: '42' });
 
         assert.deepStrictEqual(result, [
             {
@@ -285,11 +287,57 @@ describe('AzureMessageOperations', () => {
                 sequenceNumber: '7'
             }
         ]);
+        assert.strictEqual(peekFromSequence, '42');
         assert.strictEqual(receiverClosed, true);
         assert.strictEqual(clientClosed, false);
 
         await operations.dispose();
         assert.strictEqual(clientClosed, true);
+    });
+
+    it('creates a fresh receiver for each peek', async () => {
+        let receiverCreates = 0;
+        const receivers: Array<{ closed: boolean }> = [];
+
+        const client: ServiceBusClientLike = {
+            createSender: () => {
+                throw new Error('sender not needed');
+            },
+            createReceiver: () => {
+                receiverCreates++;
+                const receiverState = { closed: false };
+                receivers.push(receiverState);
+                const receiver: ReceiverLike = {
+                    receiveMessages: async () => {
+                        return [];
+                    },
+                    completeMessage: async () => {
+                        return;
+                    },
+                    abandonMessage: async () => {
+                        return;
+                    },
+                    peekMessages: async () => {
+                        return [];
+                    },
+                    close: async () => {
+                        receiverState.closed = true;
+                    }
+                };
+                return receiver;
+            },
+            close: async () => {
+                return;
+            }
+        };
+
+        const operations = new AzureMessageOperations(() => client);
+        await operations.peekMessages('queue-a', 'Endpoint=sb://fake/', 1);
+        await operations.peekMessages('queue-a', 'Endpoint=sb://fake/', 1);
+
+        assert.strictEqual(receiverCreates, 2);
+        assert.strictEqual(receivers.length, 2);
+        assert.deepStrictEqual(receivers.map(receiver => receiver.closed), [true, true]);
     });
 
     it('reuses senders per queue until released', async () => {

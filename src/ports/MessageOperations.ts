@@ -7,7 +7,12 @@ export interface MessageOperations {
         sequenceNumbers: string[],
         options?: DeleteMessagesOptions
     ): Promise<DeleteMessagesResult>;
-    peekMessages(queueName: string, connectionString: string, maxMessages: number): Promise<QueueMessage[]>;
+    peekMessages(
+        queueName: string,
+        connectionString: string,
+        maxMessages: number,
+        options?: PeekMessagesOptions
+    ): Promise<QueueMessage[]>;
     purgeQueue(queueName: string, connectionString: string): Promise<number>;
     releaseQueueResources?(queueName: string, connectionString: string): Promise<void>;
     dispose?(): Promise<void>;
@@ -22,6 +27,10 @@ export interface DeleteMessagesResult {
     deletedSequenceNumbers: string[];
     notFoundSequenceNumbers: string[];
     failureReason?: string;
+}
+
+export interface PeekMessagesOptions {
+    fromSequenceNumber?: string;
 }
 
 export interface QueueMessage {

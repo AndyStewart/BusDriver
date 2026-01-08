@@ -1,8 +1,11 @@
+import type { PeekMessagesOptions as AzurePeekMessagesOptions } from '@azure/service-bus';
 import { ServiceBusClient } from '@azure/service-bus';
-    import type {
+import Long from 'long';
+import type {
     DeleteMessagesOptions,
     DeleteMessagesResult,
     MessageOperations,
+    PeekMessagesOptions as PortPeekMessagesOptions,
     QueueMessage
 } from '../../ports/MessageOperations';
 import { AzureClientFactory } from './AzureClientFactory';
@@ -19,7 +22,7 @@ export interface ReceiverLike {
     receiveMessages(maxMessages: number, options: { maxWaitTimeInMs: number }): Promise<ReceivedMessageLike[]>;
     completeMessage(message: ReceivedMessageLike): Promise<void>;
     abandonMessage(message: ReceivedMessageLike): Promise<void>;
-    peekMessages(maxMessages: number): Promise<ReceivedMessageLike[]>;
+    peekMessages(maxMessages: number, options?: AzurePeekMessagesOptions): Promise<ReceivedMessageLike[]>;
     close(): Promise<void>;
 }
 
@@ -129,11 +132,18 @@ export class AzureMessageOperations implements MessageOperations {
         };
     }
 
-    async peekMessages(queueName: string, connectionString: string, maxMessages: number): Promise<QueueMessage[]> {
-        const receiver = this.clientPool.getReceiver(connectionString, queueName);
-
+    async peekMessages(
+        queueName: string,
+        connectionString: string,
+        maxMessages: number,
+        options?: PortPeekMessagesOptions
+    ): Promise<QueueMessage[]> {
+        const receiver = this.clientPool.getTemporaryReceiver(connectionString, queueName);
         try {
-            const messages = await receiver.peekMessages(maxMessages);
+            const startSequence = options?.fromSequenceNumber ?? '1';
+            const messages = await receiver.peekMessages(maxMessages, {
+                fromSequenceNumber: Long.fromString(startSequence)
+            });
             return messages.map((message) => {
                 return {
                     body: message.body,
@@ -147,7 +157,7 @@ export class AzureMessageOperations implements MessageOperations {
                 };
             });
         } finally {
-            await this.clientPool.releaseQueueResources(connectionString, queueName);
+            await receiver.close();
         }
     }
 
