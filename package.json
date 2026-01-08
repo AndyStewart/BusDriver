@@ -50,6 +50,11 @@
                 "title": "Delete Connection",
                 "category": "BusDriver",
                 "icon": "$(trash)"
+            },
+            {
+                "command": "busdriver.configureMessageGridColumns",
+                "title": "Configure Message Grid Columns",
+                "category": "BusDriver"
             }
         ],
         "menus": {
@@ -72,6 +77,20 @@
                     "group": "inline"
                 }
             ]
+        },
+        "configuration": {
+            "title": "BusDriver",
+            "properties": {
+                "busdriver.messageGrid.propertyColumns": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [],
+                    "description": "Application property keys to show as additional message grid columns.",
+                    "scope": "window"
+                }
+            }
         }
     },
     "scripts": {

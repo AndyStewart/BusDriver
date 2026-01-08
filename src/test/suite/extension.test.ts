@@ -20,5 +20,6 @@ suite('Extension Test Suite', () => {
         assert.ok(commands.includes('busdriver.addConnection'));
         assert.ok(commands.includes('busdriver.refresh'));
         assert.ok(commands.includes('busdriver.deleteConnection'));
+        assert.ok(commands.includes('busdriver.configureMessageGridColumns'));
     });
 });

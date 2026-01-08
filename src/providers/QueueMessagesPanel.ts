@@ -1,6 +1,11 @@
 import * as vscode from 'vscode';
 import { Queue } from '../models/Queue';
 import type { MessageOperations, QueueMessage as PortQueueMessage } from '../ports/MessageOperations';
+import {
+    buildMessageGridHeaders,
+    buildPropertyRowCells,
+    normalizePropertyColumns
+} from './messageGridColumns';
 
 export interface QueueMessage {
     sequenceNumber: string;
@@ -41,6 +46,9 @@ export class QueueMessagesPanel {
                 switch (message.command) {
                     case 'refresh':
                         this._update();
+                        return;
+                    case 'configureColumns':
+                        await vscode.commands.executeCommand('busdriver.configureMessageGridColumns');
                         return;
                     case 'removeMessage':
                         // Message was successfully moved, refresh the view
@@ -84,6 +92,14 @@ export class QueueMessagesPanel {
             },
             null,
             this._disposables
+        );
+
+        this._disposables.push(
+            vscode.workspace.onDidChangeConfiguration(event => {
+                if (event.affectsConfiguration('busdriver.messageGrid.propertyColumns')) {
+                    void this.refreshView();
+                }
+            })
         );
     }
 
@@ -159,6 +175,7 @@ export class QueueMessagesPanel {
     private async _getHtmlForWebview(): Promise<string> {
         try {
             const messages = await this._peekMessages();
+            const propertyColumns = this._getPropertyColumns();
             const messagesJson = JSON.stringify(messages.map(msg => {
                 let bodyContent: string;
                 if (typeof msg.body === 'string') {
@@ -431,11 +448,12 @@ export class QueueMessagesPanel {
                         <button id="deleteButton" class="delete-button" onclick="deleteSelectedMessages()" disabled>Delete Message...</button>
                         <button id="purgeButton" class="purge-button" onclick="purgeQueue()">Purge Queue...</button>
                         <button id="moveButton" class="move-button" onclick="moveSelectedMessage()" disabled>Move to Queue...</button>
+                        <button onclick="configureColumns()">Configure Columns...</button>
                         <button onclick="refresh()">Refresh</button>
                     </div>
                 </div>
                 <div class="grid-container" id="gridContainer">
-                    ${this._generateMessageTable(messages)}
+                    ${this._generateMessageTable(messages, propertyColumns)}
                 </div>
                 <div class="splitter" id="splitter"></div>
                 <div class="details-container" id="detailsContainer">
@@ -463,6 +481,10 @@ export class QueueMessagesPanel {
 
                     function refresh() {
                         vscode.postMessage({ command: 'refresh' });
+                    }
+
+                    function configureColumns() {
+                        vscode.postMessage({ command: 'configureColumns' });
                     }
 
                     // Splitter functionality
@@ -746,13 +768,17 @@ export class QueueMessagesPanel {
         }
     }
 
-    private _generateMessageTable(messages: PortQueueMessage[]): string {
+    private _generateMessageTable(messages: PortQueueMessage[], propertyColumns: string[]): string {
         if (messages.length === 0) {
             return '<div class="no-messages">No messages in queue</div>';
         }
 
+        const headers = buildMessageGridHeaders(propertyColumns);
         const rows = messages.map(msg => {
             const enqueuedTime = msg.enqueuedTime || 'N/A';
+            const propertyCells = buildPropertyRowCells(msg.properties, propertyColumns)
+                .map(value => `<td>${this._escapeHtml(value)}</td>`)
+                .join('');
 
             return `
                 <tr>
@@ -760,6 +786,7 @@ export class QueueMessagesPanel {
                     <td class="message-id">${this._escapeHtml(msg.messageId?.toString() || 'N/A')}</td>
                     <td>${enqueuedTime}</td>
                     <td>${msg.deliveryCount || 0}</td>
+                    ${propertyCells}
                 </tr>
             `;
         }).join('');
@@ -768,10 +795,7 @@ export class QueueMessagesPanel {
             <table>
                 <thead>
                     <tr>
-                        <th>Sequence #</th>
-                        <th>Message ID</th>
-                        <th>Enqueued Time</th>
-                        <th>Delivery Count</th>
+                        ${headers.map(header => `<th>${this._escapeHtml(header)}</th>`).join('')}
                     </tr>
                 </thead>
                 <tbody>
@@ -783,6 +807,11 @@ export class QueueMessagesPanel {
 
     private async _peekMessages(): Promise<PortQueueMessage[]> {
         return this.messageOperations.peekMessages(this.queue.name, this.connectionString, 50);
+    }
+
+    private _getPropertyColumns(): string[] {
+        const config = vscode.workspace.getConfiguration('busdriver');
+        return normalizePropertyColumns(config.get('messageGrid.propertyColumns'));
     }
 
     private _escapeHtml(unsafe: string): string {

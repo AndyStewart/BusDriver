@@ -13,6 +13,7 @@ import { QueueRegistryService } from './domain/queues/QueueRegistryService';
 import { ConnectionsProvider } from './providers/ConnectionsProvider';
 import { QueueMessagesPanel, QueueMessage } from './providers/QueueMessagesPanel';
 import { Queue, QueueTreeItem } from './models/Queue';
+import { normalizePropertyColumns } from './providers/messageGridColumns';
 
 let messageOperationsForDispose: AzureMessageOperations | undefined;
 
@@ -65,6 +66,30 @@ export function activate(context: vscode.ExtensionContext) {
         'busdriver.deleteConnection',
         async (item) => {
             await connectionsProvider.deleteConnection(item);
+        }
+    );
+
+    const configureMessageGridColumnsCommand = vscode.commands.registerCommand(
+        'busdriver.configureMessageGridColumns',
+        async () => {
+            const config = vscode.workspace.getConfiguration('busdriver');
+            const currentColumns = config.get<string[]>('messageGrid.propertyColumns') ?? [];
+            const input = await vscode.window.showInputBox({
+                prompt: 'Enter comma-separated application property keys to show as columns',
+                value: currentColumns.join(', '),
+                placeHolder: 'traceId, correlationId, tenant'
+            });
+
+            if (input === undefined) {
+                return;
+            }
+
+            const normalizedColumns = normalizePropertyColumns(input.split(','));
+            await config.update(
+                'messageGrid.propertyColumns',
+                normalizedColumns,
+                vscode.ConfigurationTarget.Global
+            );
         }
     );
 
@@ -308,6 +333,7 @@ export function activate(context: vscode.ExtensionContext) {
         addConnectionCommand,
         refreshCommand,
         deleteConnectionCommand,
+        configureMessageGridColumnsCommand,
         showQueueMessagesCommand,
         moveMessageToQueueCommand,
         deleteMessagesCommand,
