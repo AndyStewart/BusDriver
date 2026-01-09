@@ -134,7 +134,8 @@
 - TDD requirement for new features/defects:
   - Write a test first.
   - Run it and confirm it fails.
-  - Implement the change to make it pass.
+  - Work one failing test at a time (only add the next test after the current one passes).
+  - Implement the smallest change that makes the test pass; no extra behavior.
   - Refactor code/tests to improve design and keep tests green.
 - Unit vs Integration
   - Unit tests: prefer running with `mocha` on compiled JS in `out/test` for speed; mock external services (Azure Service Bus).
