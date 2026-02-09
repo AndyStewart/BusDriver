@@ -358,7 +358,7 @@ function toMessageWithSource(message: QueueMessage): MessageWithSource {
         : undefined;
 
     return {
-        body: message.body,
+        body: message.rawBody ?? message.body,
         messageId: message.messageId,
         properties: message.properties,
         enqueuedTime: message.enqueuedTime,
