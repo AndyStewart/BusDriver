@@ -327,7 +327,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
             : undefined;
 
         return {
-            body: messageData.body,
+            body: messageData.rawBody ?? messageData.body,
             messageId: messageData.messageId,
             properties: messageData.properties,
             enqueuedTime: messageData.enqueuedTime,

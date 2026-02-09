@@ -6,11 +6,13 @@ import type {
     MessageGridMessage,
     MessageGridViewModel
 } from '../domain/messageGrid/MessageGridColumnsService';
+import { formatMessageBody } from './queueMessageBody';
 
 export interface QueueMessage {
     sequenceNumber: string;
     messageId: string;
     body: string;
+    rawBody: unknown;
     properties: Record<string, unknown>;
     enqueuedTime: string;
     deliveryCount: number;
@@ -640,7 +642,7 @@ export class QueueMessagesPanel {
                             return {
                                 sequenceNumber: message.sequenceNumber,
                                 messageId: message.messageId,
-                                body: message.body,
+                                body: message.rawBody ?? message.body,
                                 properties: message.properties,
                                 enqueuedTime: message.enqueuedTime,
                                 deliveryCount: message.deliveryCount
@@ -664,7 +666,7 @@ export class QueueMessagesPanel {
                             return {
                                 sequenceNumber: message.sequenceNumber,
                                 messageId: message.messageId,
-                                body: message.body,
+                                body: message.rawBody ?? message.body,
                                 properties: message.properties,
                                 enqueuedTime: message.enqueuedTime,
                                 deliveryCount: message.deliveryCount
@@ -694,7 +696,7 @@ export class QueueMessagesPanel {
                                 return {
                                     sequenceNumber: msg.sequenceNumber,
                                     messageId: msg.messageId,
-                                    body: msg.body,
+                                    body: msg.rawBody ?? msg.body,
                                     properties: msg.properties,
                                     enqueuedTime: msg.enqueuedTime,
                                     deliveryCount: msg.deliveryCount
@@ -706,7 +708,7 @@ export class QueueMessagesPanel {
                             messagesToDrag = [{
                                 sequenceNumber: msg.sequenceNumber,
                                 messageId: msg.messageId,
-                                body: msg.body,
+                                body: msg.rawBody ?? msg.body,
                                 properties: msg.properties,
                                 enqueuedTime: msg.enqueuedTime,
                                 deliveryCount: msg.deliveryCount
@@ -945,26 +947,15 @@ export class QueueMessagesPanel {
     }
 
     private _formatMessageForView(message: PortQueueMessage): QueueMessage {
-        let bodyContent: string;
-        if (typeof message.body === 'string') {
-            bodyContent = message.body;
-        } else if (Buffer.isBuffer(message.body)) {
-            try {
-                const parsed = JSON.parse(message.body.toString().trim());
-                bodyContent = JSON.stringify(parsed, null, 2);
-            } catch {
-                bodyContent = message.body.toString();
-            }
-        } else {
-            bodyContent = JSON.stringify(message.body, null, 2);
-        }
+        const { displayBody, rawBody } = formatMessageBody(message);
 
         return {
             sequenceNumber: message.sequenceNumber?.toString() || 'N/A',
             messageId: message.messageId?.toString() || 'N/A',
             enqueuedTime: message.enqueuedTime || 'N/A',
             deliveryCount: message.deliveryCount ?? 0,
-            body: bodyContent,
+            body: displayBody,
+            rawBody,
             properties: message.properties || {}
         };
     }
