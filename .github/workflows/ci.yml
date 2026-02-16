@@ -39,22 +39,7 @@ jobs:
         if: always()
         run: |
           if [ -f coverage/unit/coverage-summary.json ]; then
-            node <<'NODE'
-            const fs = require('fs');
-            const summaryPath = 'coverage/unit/coverage-summary.json';
-            const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8')).total;
-            const lines = [
-              '## Unit Coverage (Non-Gating)',
-              '',
-              '| Metric | % | Covered / Total |',
-              '|---|---:|---:|',
-              `| Lines | ${summary.lines.pct}% | ${summary.lines.covered} / ${summary.lines.total} |`,
-              `| Statements | ${summary.statements.pct}% | ${summary.statements.covered} / ${summary.statements.total} |`,
-              `| Functions | ${summary.functions.pct}% | ${summary.functions.covered} / ${summary.functions.total} |`,
-              `| Branches | ${summary.branches.pct}% | ${summary.branches.covered} / ${summary.branches.total} |`
-            ];
-            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
-            NODE
+            node -e 'const fs=require("fs");const summary=JSON.parse(fs.readFileSync("coverage/unit/coverage-summary.json","utf8")).total;const lines=["## Unit Coverage (Non-Gating)","","| Metric | % | Covered / Total |","|---|---:|---:|",`| Lines | ${summary.lines.pct}% | ${summary.lines.covered} / ${summary.lines.total} |`,`| Statements | ${summary.statements.pct}% | ${summary.statements.covered} / ${summary.statements.total} |`,`| Functions | ${summary.functions.pct}% | ${summary.functions.covered} / ${summary.functions.total} |`,`| Branches | ${summary.branches.pct}% | ${summary.branches.covered} / ${summary.branches.total} |`];fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`${lines.join("\n")}\n`);'
           else
             echo "Coverage summary file not found." >> "$GITHUB_STEP_SUMMARY"
           fi
