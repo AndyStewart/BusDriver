@@ -9,6 +9,10 @@ import type {
 import { formatMessageBody } from './queueMessageBody';
 import { withSourceContext } from './queueMessageCommandData';
 import { getNextSequenceNumber } from './queueMessagePagination';
+import {
+    buildAppendMessagesCommand,
+    buildEmptyAppendMessagesCommand
+} from './queueMessagesLoadMoreCommand';
 import { resolveQueuePanelContext } from './queuePanelContext';
 import { serializeForInlineScript } from './webviewScriptData';
 
@@ -891,12 +895,7 @@ export class QueueMessagesPanel {
 
         const nextSequenceNumber = getNextSequenceNumber(fromSequenceNumber);
         if (!nextSequenceNumber) {
-            this._panel.webview.postMessage({
-                command: 'appendMessages',
-                rows: [],
-                messages: [],
-                hasMore: false
-            });
+            this._panel.webview.postMessage(buildEmptyAppendMessagesCommand());
             return;
         }
 
@@ -908,21 +907,13 @@ export class QueueMessagesPanel {
             );
             const formattedMessages = messages.map(message => this._formatMessageForView(message));
 
-            this._panel.webview.postMessage({
-                command: 'appendMessages',
-                rows: viewModel.rows,
-                messages: formattedMessages,
-                hasMore: messages.length === QueueMessagesPanel.pageSize
-            });
+            this._panel.webview.postMessage(
+                buildAppendMessagesCommand(viewModel.rows, formattedMessages, QueueMessagesPanel.pageSize)
+            );
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             vscode.window.showErrorMessage(`Failed to load more messages: ${errorMessage}`);
-            this._panel.webview.postMessage({
-                command: 'appendMessages',
-                rows: [],
-                messages: [],
-                hasMore: false
-            });
+            this._panel.webview.postMessage(buildEmptyAppendMessagesCommand());
         } finally {
             this._isLoadingMore = false;
         }

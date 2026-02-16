@@ -10,9 +10,9 @@ import { MessageGridColumnsService } from './domain/messageGrid/MessageGridColum
 import { MessageDeleter } from './domain/messages/MessageDeleter';
 import { MessageMover } from './domain/messages/MessageMover';
 import { MessageSender } from './domain/messages/MessageSender';
-import type { MessageWithSource } from './domain/messages/MessageTypes';
 import { QueueRegistryService } from './domain/queues/QueueRegistryService';
 import { ConnectionsProvider } from './providers/ConnectionsProvider';
+import { mapMoveMessageToDomain } from './providers/connectionsProviderDropResolution';
 import { QueueMessagesPanel, QueueMessage } from './providers/QueueMessagesPanel';
 import { Queue, QueueTreeItem } from './models/Queue';
 
@@ -145,7 +145,7 @@ export function activate(context: vscode.ExtensionContext) {
                 const messages = Array.isArray(messageData) ? messageData : [messageData];
                 const messageCount = messages.length;
                 const isMultiple = messageCount > 1;
-                const domainMessages = messages.map(toMessageWithSource);
+                const domainMessages = messages.map(message => mapMoveMessageToDomain(message));
 
                 const results = await vscode.window.withProgress({
                     location: vscode.ProgressLocation.Notification,
@@ -204,7 +204,7 @@ export function activate(context: vscode.ExtensionContext) {
         async (messageData: QueueMessage | QueueMessage[]) => {
             const messages = Array.isArray(messageData) ? messageData : [messageData];
             const messageCount = messages.length;
-            const domainMessages = messages.map(toMessageWithSource);
+            const domainMessages = messages.map(message => mapMoveMessageToDomain(message));
             const firstSource = domainMessages[0]?.source;
 
             const confirmation = await vscode.window.showWarningMessage(
@@ -350,23 +350,4 @@ export function deactivate() {
     if (operations?.dispose) {
         void operations.dispose();
     }
-}
-
-function toMessageWithSource(message: QueueMessage): MessageWithSource {
-    const source = message.sourceQueue && message.sourceConnectionString
-        ? {
-            queueName: message.sourceQueue.name,
-            connectionString: message.sourceConnectionString
-        }
-        : undefined;
-
-    return {
-        body: message.rawBody ?? message.body,
-        messageId: message.messageId,
-        properties: message.properties,
-        enqueuedTime: message.enqueuedTime,
-        deliveryCount: message.deliveryCount,
-        sequenceNumber: message.sequenceNumber,
-        source
-    };
 }

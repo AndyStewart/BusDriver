@@ -120,6 +120,7 @@ This approach is sound because each slice can ship independently, improves quali
 - 2026-02-16 21:23 - Slice 3 (complete): validated new coverage workflow locally (`npm run test:unit:coverage`) and end-to-end checks (`lint`, `compile`, `compile-tests`, `test:unit`, `test:integration`) with coverage reporting non-gating.
 - 2026-02-16 21:25 - Slice 2 (partial): extracted queue-panel command source-context shaping into a pure helper (`withSourceContext`) and added direct unit coverage; wired `QueueMessagesPanel` move/delete command payload handling to this helper.
 - 2026-02-16 21:26 - Slice 2 (partial): extracted queue message pagination logic (`getNextSequenceNumber`) into a pure helper with direct unit tests and wired load-more sequencing to this helper.
+- 2026-02-16 21:29 - Slice 2 (partial): extracted queue load-more append payload shaping into helper functions (`buildAppendMessagesCommand`, `buildEmptyAppendMessagesCommand`) with direct unit tests; updated `QueueMessagesPanel` to use these helpers. Reused existing tested move-message mapper in `extension.ts` to remove duplicate source-mapping logic.
 
 ## Slice 2 Status Snapshot
 - `src/providers/ConnectionsProvider.ts`: Completed for Slice 2 target coverage.
@@ -128,7 +129,8 @@ This approach is sound because each slice can ship independently, improves quali
   - Covered by helper tests (`resolveQueuePanelContext`, webview payload serialization, body formatting) plus direct integration tests for lifecycle/reuse/dispose behavior.
   - Move/delete command payload shaping is now covered via direct helper unit tests (`withSourceContext`).
   - Load-more sequence boundary logic is covered via direct helper unit tests (`getNextSequenceNumber`).
-  - Remaining: webview message-command wiring boundaries (`purgeQueue` command path and append/error postMessage paths) are not yet directly covered.
+  - Append command payload shaping is covered via direct helper unit tests (`buildAppendMessagesCommand`, `buildEmptyAppendMessagesCommand`).
+  - Remaining: webview message-command wiring boundaries (`purgeQueue` command path and append/error postMessage dispatch side effects) are not yet directly covered.
 - `src/extension.ts`: Partially covered.
   - Integration tests now cover activation, extended command registration, missing-connection `showQueueMessages`, missing-payload `purgeQueue`, and repeated `deactivate` safety.
   - Integration tests also cover the `moveMessageToQueue` no-target-queue branch.
