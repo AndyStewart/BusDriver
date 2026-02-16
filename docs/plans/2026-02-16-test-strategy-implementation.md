@@ -112,6 +112,7 @@ This approach is sound because each slice can ship independently, improves quali
 - 2026-02-16 20:46 - Slice 2 (partial): added direct tests for `MessageGridColumnsService`, `AzureClientFactory`, and `VsCodeMessageGridColumnsRepository`; updated the VS Code columns repository for injected config access to support deterministic unit testing.
 - 2026-02-16 21:00 - Slice 2 (partial): removed lint-rule suppression approach; switched `VsCodeMessageGridColumnsRepository` to explicit constructor injection only and wired dependencies in `extension.ts`. Added summary helper tests for move/delete result messaging logic.
 - 2026-02-16 21:10 - Slice 2 (partial): extracted `ConnectionsProvider` drop-resolution/message-mapping logic into a pure helper (`connectionsProviderDropResolution`) with direct unit coverage for pending-vs-parsed payload selection and domain message mapping behavior.
+- 2026-02-16 21:13 - Slice 2 (partial): expanded integration harness coverage in `src/test/suite/extension.test.ts` for additional command wiring plus non-interactive error/lifecycle paths (`showQueueMessages` missing-connection branch, `purgeQueue` missing-payload branch, and repeated `deactivate` safety).
 
 ## Slice 2 Status Snapshot
 - `src/providers/ConnectionsProvider.ts`: In progress.
@@ -121,8 +122,8 @@ This approach is sound because each slice can ship independently, improves quali
   - Covered indirectly via helper tests (`resolveQueuePanelContext`, webview payload serialization, body formatting helpers).
   - Remaining: direct tests for panel lifecycle/update behavior and command wiring boundaries.
 - `src/extension.ts`: Partially covered.
-  - Existing integration smoke tests validate activation and command registration.
-  - Remaining: targeted activation/wiring/error/lifecycle branch tests beyond smoke coverage.
+  - Integration tests now cover activation, extended command registration, missing-connection `showQueueMessages`, missing-payload `purgeQueue`, and repeated `deactivate` safety.
+  - Remaining: additional wiring/error branches for interactive command flows (`moveMessageToQueue`, `deleteMessages`, and confirm-path `purgeQueue`) where user input or Service Bus interactions are involved.
 - `src/adapters/azure/AzureClientFactory.ts`: Completed for Slice 2 target coverage.
 - `src/adapters/vscode/VsCodeMessageGridColumnsRepository.ts`: Completed for Slice 2 target coverage.
 - `src/domain/messageGrid/MessageGridColumnsService.ts`: Completed for Slice 2 target coverage.

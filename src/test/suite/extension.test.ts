@@ -1,5 +1,8 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
+import { QueueTreeItem } from '../../models/Queue';
+import { QueueMessagesPanel } from '../../providers/QueueMessagesPanel';
+import { deactivate } from '../../extension';
 
 suite('Extension Test Suite', () => {
     vscode.window.showInformationMessage('Start all tests.');
@@ -21,5 +24,32 @@ suite('Extension Test Suite', () => {
         assert.ok(commands.includes('busdriver.refresh'));
         assert.ok(commands.includes('busdriver.deleteConnection'));
         assert.ok(commands.includes('busdriver.configureMessageGridColumns'));
+        assert.ok(commands.includes('busdriver.showQueueMessages'));
+        assert.ok(commands.includes('busdriver.moveMessageToQueue'));
+        assert.ok(commands.includes('busdriver.deleteMessages'));
+        assert.ok(commands.includes('busdriver.purgeQueue'));
+    });
+
+    test('showQueueMessages exits when connection string is missing', async () => {
+        QueueMessagesPanel.currentPanel?.dispose();
+
+        const item = new QueueTreeItem(
+            { name: 'missing-connection-queue', connectionId: 'missing-connection' },
+            { activeMessageCount: 0 },
+            vscode.TreeItemCollapsibleState.None
+        );
+
+        await vscode.commands.executeCommand('busdriver.showQueueMessages', item);
+
+        assert.strictEqual(QueueMessagesPanel.currentPanel, undefined);
+    });
+
+    test('purgeQueue command exits when queue payload is missing', async () => {
+        await vscode.commands.executeCommand('busdriver.purgeQueue', undefined);
+    });
+
+    test('deactivate is safe to call repeatedly', () => {
+        deactivate();
+        deactivate();
     });
 });
