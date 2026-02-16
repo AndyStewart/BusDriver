@@ -108,6 +108,8 @@ This approach is sound because each slice can ship independently, improves quali
 - 2026-02-16 20:20 - Slice 2 (partial): added targeted unit tests for provider-facing helpers (`parseDroppedMessages`, `serializeForInlineScript`) and integrated them into `ConnectionsProvider`/`QueueMessagesPanel` to reduce payload-parsing and inline-script risks.
 - 2026-02-16 20:31 - Slice 2 (partial): fixed queue-panel reuse context bug by ensuring panel connection string updates alongside queue identity, with dedicated unit coverage for context updates.
 - 2026-02-16 20:37 - Slice 2 (partial): refactored queue-panel context helper to a pure function (`resolveQueuePanelContext`) and kept side effects at the provider boundary.
+- 2026-02-16 20:46 - Slice 2 (partial): added direct tests for `MessageGridColumnsService`, `AzureClientFactory`, and `VsCodeMessageGridColumnsRepository`; updated the VS Code columns repository for injected config access to support deterministic unit testing.
+- 2026-02-16 21:00 - Slice 2 (partial): removed lint-rule suppression approach; switched `VsCodeMessageGridColumnsRepository` to explicit constructor injection only and wired dependencies in `extension.ts`. Added summary helper tests for move/delete result messaging logic.
 
 ## Decisions and Notes
 - Integration tests are required when new/changed code affects integration-relevant behavior.
@@ -117,6 +119,8 @@ This approach is sound because each slice can ship independently, improves quali
 - For webview-bound message data, treat inline-script serialization as a dedicated concern with dedicated unit tests.
 - For drag/drop payloads, parse through a validated helper and avoid logging raw transfer payloads.
 - Reused UI panels that carry operational credentials must update all mutable execution context fields, not just visible identity fields.
+- Adapter components that depend on VS Code globals should expose constructor-level injection points so unit tests can run without VS Code runtime bootstrapping.
+- Lint rules are treated as hard constraints; avoid suppression-first fixes unless explicitly approved.
 
 ## Validation
 - [x] Lint passes
@@ -132,6 +136,7 @@ This approach is sound because each slice can ship independently, improves quali
 - Logging discipline is easier to enforce when parsing/validation happens in a single helper that returns `undefined` for invalid payloads.
 - Queue/connection context updates in reusable panels are a regression-prone area; small extracted helpers make these transitions explicit and testable.
 - Pure helper functions reduce regression risk and make high-risk context transitions easier to test and reason about.
+- Thin dependency injection seams in adapters make integration-relevant behavior unit-testable without weakening production behavior.
 
 ## Outcome
 In progress. Slice 1 completed; Slices 2 and 3 pending.

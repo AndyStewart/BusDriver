@@ -32,7 +32,10 @@ export function activate(context: vscode.ExtensionContext) {
     const queueRegistryService = new QueueRegistryService(queueRegistry, connectionRepository);
     const logger = new VsCodeLogger();
     const telemetry = new VsCodeTelemetry();
-    const messageGridColumnsRepository = new VsCodeMessageGridColumnsRepository();
+    const messageGridColumnsRepository = new VsCodeMessageGridColumnsRepository(
+        () => vscode.workspace.getConfiguration('busdriver'),
+        vscode.ConfigurationTarget.Global
+    );
     const messageGridColumnsService = new MessageGridColumnsService(messageGridColumnsRepository);
 
     // Create the connections provider
