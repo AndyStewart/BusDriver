@@ -41,6 +41,7 @@ For non-trivial work, create and maintain a plan file in `docs/plans/`.
   - state whether plan updates are required per slice
   - include a `Lessons Learned` section
   - be updated during execution and closed out before completion
+  - be moved to `docs/plans/archive/` once finished
 
 ## Documentation Update Rule
 Documentation updates are part of implementation, not follow-up.
