@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue Messages</title>
+    <link rel="stylesheet" href="__STYLESHEET_URI__">
+</head>
+<body data-view="queue-messages-panel">
+    <div class="header">
+        <div>
+            <h1 id="queueTitle"></h1>
+            <span class="message-count" id="messageCount"></span>
+        </div>
+        <div>
+            <button id="deleteButton" class="delete-button" data-action="deleteMessages" disabled>Delete Message...</button>
+            <button id="purgeButton" class="purge-button" data-action="purgeQueue">Purge Queue...</button>
+            <button id="moveButton" class="move-button" data-action="moveToQueue" disabled>Move to Queue...</button>
+            <button data-action="configureColumns">Configure Columns...</button>
+            <button data-action="refresh">Refresh</button>
+        </div>
+    </div>
+    <div class="grid-container" id="gridContainer">
+    </div>
+    <div class="splitter" id="splitter"></div>
+    <div class="details-container" id="detailsContainer">
+        <div class="tabs">
+            <div class="tab active" data-tab="body">Body</div>
+            <div class="tab" data-tab="properties">Properties</div>
+        </div>
+        <div class="tab-content active" id="bodyTab">
+            <div class="message-body-content" id="bodyContent"></div>
+        </div>
+        <div class="tab-content" id="propertiesTab">
+            <div id="propertiesContent"></div>
+        </div>
+    </div>
+    <script id="queueMessagesInitialData" type="application/json">__INITIAL_DATA_JSON__</script>
+    <script src="__SCRIPT_URI__"></script>
+</body>
+</html>

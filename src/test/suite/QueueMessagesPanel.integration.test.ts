@@ -65,6 +65,34 @@ suite('QueueMessagesPanel integration', () => {
         QueueMessagesPanel.currentPanel?.dispose();
         assert.strictEqual(QueueMessagesPanel.currentPanel, undefined);
     });
+
+    test('webview html links external queue messages assets', async () => {
+        const loadQueueMessages = new FakeLoadQueueMessages();
+
+        await QueueMessagesPanel.createOrShow(
+            extensionUri(),
+            { name: 'queue-a', connectionId: 'conn-a' },
+            'Endpoint=sb://conn-a',
+            loadQueueMessages
+        );
+
+        const panelState = QueueMessagesPanel.currentPanel as unknown as {
+            refreshView(): Promise<void>;
+            _panel: { webview: { html: string } };
+        };
+        await panelState.refreshView();
+
+        const html = panelState._panel.webview.html;
+
+        assert.ok(html.includes('<link rel="stylesheet" href="'));
+        assert.ok(html.includes('<script src="'));
+        assert.ok(html.includes('id="queueMessagesInitialData"'));
+        assert.ok(html.includes('data-view="queue-messages-panel"'));
+        assert.ok(html.includes('<h1 id="queueTitle"></h1>'));
+        assert.ok(!html.includes('<h1>Queue: queue-a</h1>'));
+        assert.ok(!html.includes('onclick='));
+        assert.ok(!html.includes('const vscode = acquireVsCodeApi();'));
+    });
 });
 
 class FakeLoadQueueMessages implements LoadQueueMessages {
