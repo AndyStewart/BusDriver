@@ -71,6 +71,7 @@ Build:
 Tests:
 - `npm run compile-tests`
 - `npm run test:unit`
+- `npm run test:unit:coverage`
 - `npm run test:integration`
 - `npm test` (runs `test:unit` then `test:integration`)
 
@@ -88,8 +89,10 @@ Current CI sequence:
 2. `npm run lint`
 3. `npm run compile`
 4. `npm run test:unit`
-5. Run integration tests conditionally (path filter) via `xvfb-run -a npm run test:integration`
-6. On `main`, package `.vsix`
+5. `npm run test:unit:coverage` (non-gating coverage visibility)
+6. Publish unit coverage summary/artifact
+7. Run integration tests conditionally (path filter) via `xvfb-run -a npm run test:integration`
+8. On `main`, package `.vsix`
 
 ## Coding Conventions
 - TypeScript strict-first; explicit types on public APIs.

@@ -59,6 +59,18 @@ npm run test:integration
 
 If your change is not integration-relevant, `npm run test:unit` is the minimum required test run.
 
+## Coverage Visibility (Non-Gating)
+Coverage reporting is enabled for visibility and review prioritization, not as a merge gate.
+
+- CI publishes a unit coverage summary and uploads coverage artifacts.
+- Coverage percentage does not fail CI by itself.
+- Test failures still fail CI.
+
+Local command:
+```bash
+npm run test:unit:coverage
+```
+
 ## Pull Request Expectations
 - Explain the problem and the approach in 1-3 short paragraphs.
 - Link issue(s) when available.

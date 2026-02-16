@@ -116,6 +116,8 @@ This approach is sound because each slice can ship independently, improves quali
 - 2026-02-16 21:17 - Slice 2 (partial): added `ConnectionsProvider` integration-harness tests for drag/drop orchestration (`handleDrop` pending-drag path, parsed-payload fallback, invalid-payload warning path), including move/delete side effects and panel notification behavior.
 - 2026-02-16 21:18 - Slice 2 (partial): added `QueueMessagesPanel` integration-harness tests for panel lifecycle and reuse behavior (`createOrShow` creation path, panel reuse/context update path, and `dispose` cleanup path).
 - 2026-02-16 21:19 - Slice 2 (partial): expanded extension integration coverage for non-interactive move command error handling (`moveMessageToQueue` no-target-queue branch).
+- 2026-02-16 21:22 - Slice 3 (partial): added non-gating unit coverage reporting with `c8` (`test:unit:coverage` script), CI coverage summary/artifact publishing, and contribution-guide updates describing coverage visibility expectations.
+- 2026-02-16 21:23 - Slice 3 (complete): validated new coverage workflow locally (`npm run test:unit:coverage`) and end-to-end checks (`lint`, `compile`, `compile-tests`, `test:unit`, `test:integration`) with coverage reporting non-gating.
 
 ## Slice 2 Status Snapshot
 - `src/providers/ConnectionsProvider.ts`: Completed for Slice 2 target coverage.
@@ -146,7 +148,7 @@ This approach is sound because each slice can ship independently, improves quali
 - [x] Lint passes
 - [x] Build/compile passes
 - [x] Tests pass
-- [ ] Docs updated (`docs/product.md`, `docs/architecture.md`, `docs/adr/`, `docs/contributing.md` as applicable)
+- [x] Docs updated (`docs/product.md`, `docs/architecture.md`, `docs/adr/`, `docs/contributing.md` as applicable)
 - [ ] Each completed slice is independently deployable and testable
 - [ ] Per-slice documentation and plan-maintenance fields were reviewed and applied
 
@@ -157,6 +159,7 @@ This approach is sound because each slice can ship independently, improves quali
 - Queue/connection context updates in reusable panels are a regression-prone area; small extracted helpers make these transitions explicit and testable.
 - Pure helper functions reduce regression risk and make high-risk context transitions easier to test and reason about.
 - Thin dependency injection seams in adapters make integration-relevant behavior unit-testable without weakening production behavior.
+- VS Code modal dialogs are intentionally blocked in extension-test mode; integration coverage should target non-modal branches unless dialog behavior is abstracted behind testable seams.
 
 ## Outcome
-In progress. Slice 1 completed; Slices 2 and 3 pending.
+In progress. Slices 1 and 3 completed; Slice 2 pending.
