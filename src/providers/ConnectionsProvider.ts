@@ -2,16 +2,14 @@ import * as vscode from 'vscode';
 import type { Connection } from '../domain/models/Connection';
 import { ConnectionService } from '../domain/connections/ConnectionService';
 import { MessageMover } from '../domain/messages/MessageMover';
-import type { MessageSource, MessageWithSource } from '../domain/messages/MessageTypes';
 import { QueueRegistryService } from '../domain/queues/QueueRegistryService';
 import { ConnectionTreeItem } from '../models/ConnectionTreeItem';
 import { Queue, QueueStats, QueueTreeItem } from '../models/Queue';
 import { Logger } from '../ports/Logger';
 import { Telemetry } from '../ports/Telemetry';
-import { parseDroppedMessages, type DroppedMessage } from './dragDropMessageParser';
-import { QueueMessagesPanel, QueueMessage as QueueMessageData } from './QueueMessagesPanel';
-
-type MoveMessageData = QueueMessageData | DroppedMessage;
+import { parseDroppedMessages } from './dragDropMessageParser';
+import { mapMoveMessageToDomain, selectDropMessages, type MoveMessageData } from './connectionsProviderDropResolution';
+import { QueueMessagesPanel } from './QueueMessagesPanel';
 
 export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTreeItem | QueueTreeItem>, vscode.TreeDragAndDropController<QueueTreeItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<ConnectionTreeItem | QueueTreeItem | undefined | null | void> = new vscode.EventEmitter<ConnectionTreeItem | QueueTreeItem | undefined | null | void>();
@@ -210,18 +208,14 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
             return;
         }
 
-        // First, check if there's a pending drag message from the webview
-        if (QueueMessagesPanel.pendingDragMessage) {
-            const messages = QueueMessagesPanel.pendingDragMessage;
-            QueueMessagesPanel.pendingDragMessage = undefined; // Clear it
-            await this.processMessageMove(target, messages);
-            return;
-        }
+        const pendingDragMessages = QueueMessagesPanel.pendingDragMessage;
+        QueueMessagesPanel.pendingDragMessage = undefined;
 
-        const messages = parseDroppedMessages(
+        const parsedMessages = parseDroppedMessages(
             dataTransfer.get('text/uri-list')?.value,
             dataTransfer.get('text/plain')?.value
         );
+        const messages = selectDropMessages(pendingDragMessages, parsedMessages);
 
         if (!messages) {
             this.logger.warn('Drop ignored because no valid BusDriver message payload was found');
@@ -242,7 +236,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         const messages = Array.isArray(messageData) ? messageData : [messageData];
         const messageCount = messages.length;
         const isMultiple = messageCount > 1;
-        const domainMessages = messages.map(message => this.toMessageWithSource(message));
+        const domainMessages = messages.map(message => mapMoveMessageToDomain(message));
 
         const results = await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
@@ -292,36 +286,5 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         }
 
         this.refresh();
-    }
-
-    private toMessageWithSource(messageData: MoveMessageData): MessageWithSource {
-        const source = this.extractSource(messageData);
-        const body = 'rawBody' in messageData ? messageData.rawBody : messageData.body;
-
-        return {
-            body,
-            messageId: messageData.messageId,
-            properties: messageData.properties,
-            enqueuedTime: messageData.enqueuedTime,
-            deliveryCount: messageData.deliveryCount,
-            sequenceNumber: messageData.sequenceNumber,
-            source
-        };
-    }
-
-    private extractSource(messageData: MoveMessageData): MessageSource | undefined {
-        if (!('sourceQueue' in messageData)) {
-            return undefined;
-        }
-
-        const { sourceQueue, sourceConnectionString } = messageData;
-        if (!sourceQueue || typeof sourceConnectionString !== 'string' || sourceConnectionString.length === 0) {
-            return undefined;
-        }
-
-        return {
-            queueName: sourceQueue.name,
-            connectionString: sourceConnectionString
-        };
     }
 }

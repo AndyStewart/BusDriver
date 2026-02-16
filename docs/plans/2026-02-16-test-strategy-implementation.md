@@ -105,11 +105,27 @@ This approach is sound because each slice can ship independently, improves quali
 ## Progress Log
 - 2026-02-16 00:00 - Created plan.
 - 2026-02-16 00:15 - Completed Slice 1: documented integration-test trigger policy, split test scripts into explicit unit/integration commands, and updated CI to run integration tests only when integration-relevant paths changed.
+- 2026-02-16 20:07 - Slice 2 (partial): resolved post-rebase type mismatch in `ConnectionsProvider` for drag/drop message payload shapes, preserving source-context behavior when available and validating with passing `npm run lint` and `npm run test:unit`.
 - 2026-02-16 20:20 - Slice 2 (partial): added targeted unit tests for provider-facing helpers (`parseDroppedMessages`, `serializeForInlineScript`) and integrated them into `ConnectionsProvider`/`QueueMessagesPanel` to reduce payload-parsing and inline-script risks.
 - 2026-02-16 20:31 - Slice 2 (partial): fixed queue-panel reuse context bug by ensuring panel connection string updates alongside queue identity, with dedicated unit coverage for context updates.
 - 2026-02-16 20:37 - Slice 2 (partial): refactored queue-panel context helper to a pure function (`resolveQueuePanelContext`) and kept side effects at the provider boundary.
 - 2026-02-16 20:46 - Slice 2 (partial): added direct tests for `MessageGridColumnsService`, `AzureClientFactory`, and `VsCodeMessageGridColumnsRepository`; updated the VS Code columns repository for injected config access to support deterministic unit testing.
 - 2026-02-16 21:00 - Slice 2 (partial): removed lint-rule suppression approach; switched `VsCodeMessageGridColumnsRepository` to explicit constructor injection only and wired dependencies in `extension.ts`. Added summary helper tests for move/delete result messaging logic.
+- 2026-02-16 21:10 - Slice 2 (partial): extracted `ConnectionsProvider` drop-resolution/message-mapping logic into a pure helper (`connectionsProviderDropResolution`) with direct unit coverage for pending-vs-parsed payload selection and domain message mapping behavior.
+
+## Slice 2 Status Snapshot
+- `src/providers/ConnectionsProvider.ts`: In progress.
+  - Covered via direct unit tests for extracted drop-resolution and message-mapping logic.
+  - Remaining: VS Code-bound orchestration paths (`handleDrop`, progress/reporting, and move result UI notifications) need harness-level integration coverage.
+- `src/providers/QueueMessagesPanel.ts`: In progress.
+  - Covered indirectly via helper tests (`resolveQueuePanelContext`, webview payload serialization, body formatting helpers).
+  - Remaining: direct tests for panel lifecycle/update behavior and command wiring boundaries.
+- `src/extension.ts`: Partially covered.
+  - Existing integration smoke tests validate activation and command registration.
+  - Remaining: targeted activation/wiring/error/lifecycle branch tests beyond smoke coverage.
+- `src/adapters/azure/AzureClientFactory.ts`: Completed for Slice 2 target coverage.
+- `src/adapters/vscode/VsCodeMessageGridColumnsRepository.ts`: Completed for Slice 2 target coverage.
+- `src/domain/messageGrid/MessageGridColumnsService.ts`: Completed for Slice 2 target coverage.
 
 ## Decisions and Notes
 - Integration tests are required when new/changed code affects integration-relevant behavior.
