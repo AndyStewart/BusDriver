@@ -118,13 +118,15 @@ This approach is sound because each slice can ship independently, improves quali
 - 2026-02-16 21:19 - Slice 2 (partial): expanded extension integration coverage for non-interactive move command error handling (`moveMessageToQueue` no-target-queue branch).
 - 2026-02-16 21:22 - Slice 3 (partial): added non-gating unit coverage reporting with `c8` (`test:unit:coverage` script), CI coverage summary/artifact publishing, and contribution-guide updates describing coverage visibility expectations.
 - 2026-02-16 21:23 - Slice 3 (complete): validated new coverage workflow locally (`npm run test:unit:coverage`) and end-to-end checks (`lint`, `compile`, `compile-tests`, `test:unit`, `test:integration`) with coverage reporting non-gating.
+- 2026-02-16 21:25 - Slice 2 (partial): extracted queue-panel command source-context shaping into a pure helper (`withSourceContext`) and added direct unit coverage; wired `QueueMessagesPanel` move/delete command payload handling to this helper.
 
 ## Slice 2 Status Snapshot
 - `src/providers/ConnectionsProvider.ts`: Completed for Slice 2 target coverage.
   - Covered via direct unit tests for extracted drop-resolution/message-mapping helpers and integration-harness tests for `handleDrop` orchestration paths.
 - `src/providers/QueueMessagesPanel.ts`: In progress.
   - Covered by helper tests (`resolveQueuePanelContext`, webview payload serialization, body formatting) plus direct integration tests for lifecycle/reuse/dispose behavior.
-  - Remaining: webview message-command wiring boundaries (`moveToQueue`, `deleteMessages`, `purgeQueue`, and load-more interactions) are not yet directly covered.
+  - Move/delete command payload shaping is now covered via direct helper unit tests (`withSourceContext`).
+  - Remaining: webview message-command wiring boundaries (`purgeQueue` and load-more interactions) are not yet directly covered.
 - `src/extension.ts`: Partially covered.
   - Integration tests now cover activation, extended command registration, missing-connection `showQueueMessages`, missing-payload `purgeQueue`, and repeated `deactivate` safety.
   - Integration tests also cover the `moveMessageToQueue` no-target-queue branch.

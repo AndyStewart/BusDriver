@@ -7,6 +7,7 @@ import type {
     MessageGridViewModel
 } from '../domain/messageGrid/MessageGridColumnsService';
 import { formatMessageBody } from './queueMessageBody';
+import { withSourceContext } from './queueMessageCommandData';
 import { resolveQueuePanelContext } from './queuePanelContext';
 import { serializeForInlineScript } from './webviewScriptData';
 
@@ -70,23 +71,21 @@ export class QueueMessagesPanel {
                         return;
                     case 'moveToQueue': {
                         // User wants to move message(s) to another queue
-                        // Add source queue information to each message
-                        const messages = Array.isArray(message.data) ? message.data : [message.data];
-                        messages.forEach((msg: QueueMessage) => {
-                            msg.sourceQueue = this.queue;
-                            msg.sourceConnectionString = this.connectionString;
-                        });
+                        const messages = withSourceContext<QueueMessage>(
+                            message.data as QueueMessage | QueueMessage[],
+                            this.queue,
+                            this.connectionString
+                        );
                         await vscode.commands.executeCommand('busdriver.moveMessageToQueue', messages);
                         return;
                     }
                     case 'deleteMessages': {
                         // User wants to delete message(s)
-                        // Add source queue information to each message
-                        const messages = Array.isArray(message.data) ? message.data : [message.data];
-                        messages.forEach((msg: QueueMessage) => {
-                            msg.sourceQueue = this.queue;
-                            msg.sourceConnectionString = this.connectionString;
-                        });
+                        const messages = withSourceContext<QueueMessage>(
+                            message.data as QueueMessage | QueueMessage[],
+                            this.queue,
+                            this.connectionString
+                        );
                         await vscode.commands.executeCommand('busdriver.deleteMessages', messages);
                         return;
                     }
