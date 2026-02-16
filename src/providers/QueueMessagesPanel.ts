@@ -8,6 +8,7 @@ import type {
 } from '../domain/messageGrid/MessageGridColumnsService';
 import { formatMessageBody } from './queueMessageBody';
 import { withSourceContext } from './queueMessageCommandData';
+import { getNextSequenceNumber } from './queueMessagePagination';
 import { resolveQueuePanelContext } from './queuePanelContext';
 import { serializeForInlineScript } from './webviewScriptData';
 
@@ -888,7 +889,7 @@ export class QueueMessagesPanel {
             return;
         }
 
-        const nextSequenceNumber = this._getNextSequenceNumber(fromSequenceNumber);
+        const nextSequenceNumber = getNextSequenceNumber(fromSequenceNumber);
         if (!nextSequenceNumber) {
             this._panel.webview.postMessage({
                 command: 'appendMessages',
@@ -959,22 +960,6 @@ export class QueueMessagesPanel {
             rawBody,
             properties: message.properties || {}
         };
-    }
-
-    private _getNextSequenceNumber(sequenceNumber?: string): string | undefined {
-        if (!sequenceNumber) {
-            return undefined;
-        }
-
-        if (!/^\d+$/.test(sequenceNumber)) {
-            return undefined;
-        }
-
-        try {
-            return (BigInt(sequenceNumber) + 1n).toString();
-        } catch {
-            return undefined;
-        }
     }
 
     private _escapeHtml(unsafe: string): string {
