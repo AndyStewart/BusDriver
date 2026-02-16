@@ -8,6 +8,7 @@ node_modules/
 
 # Test output
 .vscode-test/
+coverage/
 
 # macOS
 .DS_Store
