@@ -6,18 +6,17 @@ BusDriver is a VS Code extension for managing Azure Service Bus connections and 
 ## Architectural Style
 The project follows a ports-and-adapters (hexagonal) architecture:
 
-- **Domain (`src/domain`)**: business logic for connections, queue discovery, message send/move/delete, and message-grid preferences.
-- **Application (`src/application`)**: use-case implementations that orchestrate domain services behind primary ports.
-- **Ports (`src/ports`)**:
-  - `primary/`: inbound use-case interfaces (driving side).
-  - `secondary/`: outbound dependency interfaces (driven side).
-- **Adapters (`src/adapters`)**:
-  - `azure/`: implementations backed by Azure Service Bus SDK.
-  - `vscode/`: implementations backed by VS Code APIs (secrets/config/logging/telemetry).
-- **UI/Orchestration (`src/providers`, `src/models`, `src/extension.ts`)**: tree view provider, webview panel, command registration, and dependency wiring.
+- **Feature modules (`src/features/*`)**: each feature is organized as a vertical slice with local `application`, `ports`, and `adapters` folders.
+  - `src/features/connections/**`: connection management and tree interactions.
+  - `src/features/queues/**`: queue discovery and queue registry orchestration.
+  - `src/features/queueMessages/**`: queue-message load/move/delete/purge behavior and panel UI.
+- **Shared cross-feature code (`src/shared/*`)**:
+  - `src/shared/adapters/**`: shared adapter implementations (for example, logging, telemetry, Azure client pooling).
+  - `src/shared/ports/**`: shared outbound contracts.
+- **Composition root (`src/extension.ts`)**: dependency wiring and VS Code command registration.
 
 Notable current use-case boundaries:
-- Queue panel message loading and pagination are handled by application use-case services (for example, `LoadQueueMessagesUseCase`) behind primary ports, with providers acting as transport/lifecycle boundaries.
+- Queue panel message loading and pagination are handled by feature-local application use cases (for example, `src/features/queueMessages/application/LoadQueueMessagesUseCase.ts`) behind primary ports, with UI adapters acting as transport/lifecycle boundaries.
 
 ## Runtime Composition
 `src/extension.ts` is the composition root:
@@ -44,11 +43,10 @@ Boundary safety notes:
 - Keep parsing/normalization helpers pure where practical, and apply mutations only at boundary layers.
 
 ## Testing Approach
-- **Unit tests (`src/test/domain`)** validate domain behavior with fakes.
-- **Adapter tests (`src/test/adapters`)** validate integration boundaries.
-- **Extension/integration tests (`src/test/suite`)** run through `vscode-test`.
+- **Unit tests (`src/test/features/**/{application,adapters}` and `src/test/shared/**`)** validate feature behavior and shared boundaries.
+- **Extension/integration tests (`src/test/**/**/*.integration.test.ts`)** run through `vscode-test`.
 
 ## Key Entry Points
 - `src/extension.ts`: activation and dependency wiring.
-- `src/providers/ConnectionsProvider.ts`: tree interactions and command-backed actions.
-- `src/providers/QueueMessagesPanel.ts`: queue message webview interactions.
+- `src/features/connections/adapters/TreeConnectionsAdapter.ts`: tree interactions and command-backed actions.
+- `src/features/queueMessages/adapters/WebviewQueueMessagesPanelAdapter.ts`: queue message webview interactions.

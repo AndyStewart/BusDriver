@@ -101,8 +101,8 @@
         "compile-tests": "tsc -p . --outDir out",
         "watch-tests": "tsc -p . -w --outDir out",
         "lint": "eslint src --ext ts",
-        "test:unit": "npm run compile-tests && npx mocha \"out/test/domain/**/*.test.js\" \"out/test/adapters/**/*.test.js\"",
-        "test:unit:coverage": "npm run compile-tests && c8 --reporter=text-summary --reporter=json-summary --reporter=lcov --report-dir coverage/unit npx mocha \"out/test/domain/**/*.test.js\" \"out/test/adapters/**/*.test.js\"",
+        "test:unit": "npm run compile-tests && npx mocha \"out/test/features/**/application/**/*.test.js\" \"out/test/features/**/adapters/**/*.test.js\" \"out/test/shared/**/*.test.js\"",
+        "test:unit:coverage": "npm run compile-tests && c8 --reporter=text-summary --reporter=json-summary --reporter=lcov --report-dir coverage/unit npx mocha \"out/test/features/**/application/**/*.test.js\" \"out/test/features/**/adapters/**/*.test.js\" \"out/test/shared/**/*.test.js\"",
         "test:integration": "npm run compile-tests && npm run compile && vscode-test",
         "test": "npm run test:unit && npm run test:integration"
     },

@@ -14,9 +14,8 @@ When guidance conflicts, use this order:
 - Never log secrets (connection strings, keys, tokens, raw sensitive payloads).
 - Do not embed raw `JSON.stringify(...)` output directly into inline `<script>` blocks in webviews; use safe serializer utilities.
 - Keep domain code isolated from VS Code/Azure SDK details.
-  - No VS Code/Azure imports in `src/domain/**`.
-  - Depend on ports in `src/ports/**`; implement in adapters under `src/adapters/**`.
-  - Keep primary (inbound) ports in `src/ports/primary/**` and secondary (outbound) ports in `src/ports/secondary/**`.
+  - Keep core business logic in `src/features/**/application/**` free of direct VS Code/Azure SDK coupling.
+  - Depend on ports in `src/features/**/ports/**`; implement boundaries in adapters under `src/features/**/adapters/**` or `src/shared/adapters/**`.
 - For defects or behavior changes, follow TDD-first:
   1. Write a failing test.
   2. Implement minimal code to pass.
@@ -53,13 +52,12 @@ On non-trivial changes, verify and update as applicable:
 
 ## Repository Pointers
 - Runtime composition: `src/extension.ts`
-- Domain: `src/domain/**`
-- Application use-cases: `src/application/**`
-- Primary ports: `src/ports/primary/**`
-- Secondary ports: `src/ports/secondary/**`
-- Adapters: `src/adapters/**`
-- Providers/UI orchestration: `src/providers/**`
-- Tests: `src/test/**` (compiled output in `out/test/**`)
+- Features (primary navigation): `src/features/**`
+- Shared cross-feature code: `src/shared/**`
+- Feature application use-cases: `src/features/**/application/**`
+- Feature ports: `src/features/**/ports/**`
+- Feature adapters: `src/features/**/adapters/**`
+- Tests: `src/test/features/**`, `src/test/shared/**`, `src/test/**/*.integration.test.ts` (compiled output in `out/test/**`)
 
 ## Commands (Authoritative)
 Install:
@@ -112,7 +110,7 @@ Before considering work complete:
 - `npm run compile` and `npm run compile-tests` pass.
 - Required tests pass:
   - always: `npm run test:unit`
-  - add `npm run test:integration` when integration-relevant code changed (`src/extension.ts`, `src/providers/**`, `src/adapters/**`, or build/test wiring).
+  - add `npm run test:integration` when integration-relevant code changed (`src/extension.ts`, `src/features/**/adapters/**`, `src/shared/adapters/**`, `src/test/**/*.integration.test.ts`, or build/test wiring).
 - Documentation reviewed and updated in the same change set.
 - Plan file updated with progress, validation, outcome, and lessons learned.
 

@@ -1,28 +1,28 @@
 import * as vscode from 'vscode';
-import { AzureMessageOperations } from './adapters/azure/AzureMessageOperations';
-import { AzureQueueRegistry } from './adapters/azure/AzureQueueRegistry';
-import { VsCodeConnectionRepository } from './adapters/vscode/VsCodeConnectionRepository';
-import { VsCodeLogger } from './adapters/vscode/VsCodeLogger';
-import { VsCodeMessageGridColumnsRepository } from './adapters/vscode/VsCodeMessageGridColumnsRepository';
-import { VsCodeQueueMessagesPanelGateway } from './adapters/vscode/VsCodeQueueMessagesPanelGateway';
-import { VsCodeTelemetry } from './adapters/vscode/VsCodeTelemetry';
-import { DeleteMessagesUseCase } from './application/useCases/DeleteMessagesUseCase';
-import { LoadQueueMessagesUseCase } from './application/useCases/LoadQueueMessagesUseCase';
-import { ListQueuesUseCase } from './application/useCases/ListQueuesUseCase';
-import { MoveMessagesUseCase } from './application/useCases/MoveMessagesUseCase';
-import { OpenQueueMessagesUseCase } from './application/useCases/OpenQueueMessagesUseCase';
-import { PurgeQueueUseCase } from './application/useCases/PurgeQueueUseCase';
-import { ConnectionService } from './domain/connections/ConnectionService';
-import { MessageGridColumnsService } from './domain/messageGrid/MessageGridColumnsService';
-import { MessageDeleter } from './domain/messages/MessageDeleter';
-import { MessageMover } from './domain/messages/MessageMover';
-import { MessageSender } from './domain/messages/MessageSender';
-import { QueueRegistryService } from './domain/queues/QueueRegistryService';
-import { Queue, QueueTreeItem } from './models/Queue';
-import { mapMoveMessageToDomain } from './providers/connectionsProviderDropResolution';
-import { summarizeDeleteResult, summarizeMoveResult } from './providers/messageOperationSummary';
-import { ConnectionsProvider } from './providers/ConnectionsProvider';
-import { QueueMessagesPanel, QueueMessage } from './providers/QueueMessagesPanel';
+import { VsCodeConnectionRepository } from './features/connections/adapters/VsCodeConnectionRepositoryAdapter';
+import { ConnectionService } from './features/connections/application/ConnectionService';
+import { ConnectionsProvider } from './features/connections/adapters/TreeConnectionsAdapter';
+import { AzureMessageOperations } from './features/queueMessages/adapters/AzureMessageOperationsAdapter';
+import { VsCodeMessageGridColumnsRepository } from './features/queueMessages/adapters/VsCodeMessageGridColumnsRepositoryAdapter';
+import { VsCodeQueueMessagesPanelGateway } from './features/queueMessages/adapters/VsCodeQueueMessagesPanelGatewayAdapter';
+import { DeleteMessagesUseCase } from './features/queueMessages/application/DeleteMessagesUseCase';
+import { LoadQueueMessagesUseCase } from './features/queueMessages/application/LoadQueueMessagesUseCase';
+import { MoveMessagesUseCase } from './features/queueMessages/application/MoveMessagesUseCase';
+import { OpenQueueMessagesUseCase } from './features/queueMessages/application/OpenQueueMessagesUseCase';
+import { PurgeQueueUseCase } from './features/queueMessages/application/PurgeQueueUseCase';
+import { MessageGridColumnsService } from './features/queueMessages/application/MessageGridColumnsService';
+import { MessageDeleter } from './features/queueMessages/application/MessageDeleter';
+import { MessageMover } from './features/queueMessages/application/MessageMover';
+import { MessageSender } from './features/queueMessages/application/MessageSender';
+import { mapMoveMessageToDomain } from './features/queueMessages/adapters/TreeMessageDropAdapter';
+import { summarizeDeleteResult, summarizeMoveResult } from './features/queueMessages/adapters/CommandMessageOperationSummaryAdapter';
+import { QueueMessagesPanel, QueueMessage } from './features/queueMessages/adapters/WebviewQueueMessagesPanelAdapter';
+import { AzureQueueRegistry } from './features/queues/adapters/AzureQueueRegistryAdapter';
+import { ListQueuesUseCase } from './features/queues/application/ListQueuesUseCase';
+import { QueueRegistryService } from './features/queues/application/QueueRegistryService';
+import { Queue, QueueTreeItem } from './features/queues/adapters/TreeQueueItemAdapter';
+import { VsCodeLogger } from './shared/adapters/vscode/VsCodeLoggerAdapter';
+import { VsCodeTelemetry } from './shared/adapters/vscode/VsCodeTelemetryAdapter';
 
 let messageOperationsForDispose: AzureMessageOperations | undefined;
 
@@ -171,7 +171,7 @@ export function activate(context: vscode.ExtensionContext) {
                     targetQueueName: selected.queue.name,
                     targetConnectionString,
                     messages: domainMessages,
-                    onProgress: (processed, total) => {
+                    onProgress: (processed: number, total: number) => {
                         reportProgress(progress, processed, total);
                     }
                 });
@@ -221,7 +221,7 @@ export function activate(context: vscode.ExtensionContext) {
             }, async (progress) => {
                 return deleteMessages.delete({
                     messages: domainMessages,
-                    onProgress: (processed, total) => {
+                    onProgress: (processed: number, total: number) => {
                         reportProgress(progress, processed, total);
                     }
                 });
