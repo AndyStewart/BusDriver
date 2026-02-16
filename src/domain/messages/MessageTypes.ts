@@ -1,4 +1,4 @@
-import type { QueueMessage } from '../../ports/MessageOperations';
+import type { QueueMessage } from '../../ports/secondary/MessageOperations';
 
 export interface MessageSource {
     queueName: string;

@@ -1,6 +1,6 @@
 import type { Connection } from '../models/Connection';
-import type { ConnectionRepository } from '../../ports/ConnectionRepository';
-import type { QueueInfo, QueueRegistry } from '../../ports/QueueRegistry';
+import type { ConnectionRepository } from '../../ports/secondary/ConnectionRepository';
+import type { QueueInfo, QueueRegistry } from '../../ports/secondary/QueueRegistry';
 
 export interface QueueWithConnection {
     queue: QueueInfo;

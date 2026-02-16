@@ -1,16 +1,17 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
+import { MoveMessagesUseCase } from '../../application/useCases/MoveMessagesUseCase';
 import type { Connection } from '../../domain/models/Connection';
 import { ConnectionService } from '../../domain/connections/ConnectionService';
 import { MessageMover } from '../../domain/messages/MessageMover';
 import { MessageSender } from '../../domain/messages/MessageSender';
 import { QueueRegistryService } from '../../domain/queues/QueueRegistryService';
 import { QueueTreeItem } from '../../models/Queue';
-import type { ConnectionRepository } from '../../ports/ConnectionRepository';
-import type { Logger } from '../../ports/Logger';
-import type { MessageOperations, QueueMessage } from '../../ports/MessageOperations';
-import type { QueueRegistry } from '../../ports/QueueRegistry';
-import type { Telemetry } from '../../ports/Telemetry';
+import type { ConnectionRepository } from '../../ports/secondary/ConnectionRepository';
+import type { Logger } from '../../ports/secondary/Logger';
+import type { MessageOperations, QueueMessage } from '../../ports/secondary/MessageOperations';
+import type { QueueRegistry } from '../../ports/secondary/QueueRegistry';
+import type { Telemetry } from '../../ports/secondary/Telemetry';
 import { ConnectionsProvider } from '../../providers/ConnectionsProvider';
 import { QueueMessagesPanel } from '../../providers/QueueMessagesPanel';
 
@@ -107,14 +108,14 @@ function createFixture(): {
     const connectionService = new ConnectionService(connectionRepository);
     const queueRegistryService = new QueueRegistryService(new EmptyQueueRegistry(), connectionRepository);
     const operations = new FakeMessageOperations();
-    const messageMover = new MessageMover(new MessageSender(operations), operations);
+    const moveMessages = new MoveMessagesUseCase(new MessageMover(new MessageSender(operations), operations));
     const logger = new FakeLogger();
     const telemetry = new NoopTelemetry();
 
     const provider = new ConnectionsProvider(
         connectionService,
         queueRegistryService,
-        messageMover,
+        moveMessages,
         logger,
         telemetry
     );

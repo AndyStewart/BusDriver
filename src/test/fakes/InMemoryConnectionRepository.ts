@@ -1,5 +1,5 @@
 import type { Connection } from '../../domain/models/Connection';
-import type { ConnectionRepository } from '../../ports/ConnectionRepository';
+import type { ConnectionRepository } from '../../ports/secondary/ConnectionRepository';
 
 export class InMemoryConnectionRepository implements ConnectionRepository {
     private connections: Connection[] = [];

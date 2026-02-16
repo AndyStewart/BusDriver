@@ -7,18 +7,24 @@ BusDriver is a VS Code extension for managing Azure Service Bus connections and 
 The project follows a ports-and-adapters (hexagonal) architecture:
 
 - **Domain (`src/domain`)**: business logic for connections, queue discovery, message send/move/delete, and message-grid preferences.
-- **Ports (`src/ports`)**: TypeScript interfaces that define dependencies the domain needs (repositories, queue registry, message operations, logging, telemetry).
+- **Application (`src/application`)**: use-case implementations that orchestrate domain services behind primary ports.
+- **Ports (`src/ports`)**:
+  - `primary/`: inbound use-case interfaces (driving side).
+  - `secondary/`: outbound dependency interfaces (driven side).
 - **Adapters (`src/adapters`)**:
   - `azure/`: implementations backed by Azure Service Bus SDK.
   - `vscode/`: implementations backed by VS Code APIs (secrets/config/logging/telemetry).
 - **UI/Orchestration (`src/providers`, `src/models`, `src/extension.ts`)**: tree view provider, webview panel, command registration, and dependency wiring.
 
+Notable current use-case boundaries:
+- Queue panel message loading and pagination are handled by application use-case services (for example, `LoadQueueMessagesUseCase`) behind primary ports, with providers acting as transport/lifecycle boundaries.
+
 ## Runtime Composition
 `src/extension.ts` is the composition root:
 
 1. Instantiate VS Code and Azure adapters.
-2. Construct domain services using port interfaces.
-3. Create providers/panels that call domain services.
+2. Construct domain services and application use-cases.
+3. Create providers/panels that call primary port implementations.
 4. Register commands and tree view interactions.
 
 This keeps domain logic testable and independent from VS Code/Azure details.
@@ -27,8 +33,8 @@ This keeps domain logic testable and independent from VS Code/Azure details.
 Typical flow for a user action (for example, moving a message):
 
 1. VS Code command is invoked from UI.
-2. Provider collects input/context and calls a domain service.
-3. Domain service executes logic through a port interface.
+2. Provider/command handler collects input/context and calls a primary port (use case).
+3. Use case coordinates domain services and secondary ports.
 4. Adapter performs concrete I/O (Azure SDK or VS Code API).
 5. Provider updates UI and surfaces success/error feedback.
 

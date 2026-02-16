@@ -1,8 +1,6 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { MessageGridColumnsService } from '../../domain/messageGrid/MessageGridColumnsService';
-import type { MessageGridColumnsRepository } from '../../ports/MessageGridColumnsRepository';
-import type { MessageOperations, QueueMessage } from '../../ports/MessageOperations';
+import type { LoadQueueMessages, QueueMessagesPage } from '../../ports/primary/LoadQueueMessages';
 import { QueueMessagesPanel } from '../../providers/QueueMessagesPanel';
 
 suite('QueueMessagesPanel integration', () => {
@@ -11,30 +9,26 @@ suite('QueueMessagesPanel integration', () => {
     });
 
     test('createOrShow creates a panel and stores it as currentPanel', async () => {
-        const operations = new FakeMessageOperations();
-        const columnsService = new MessageGridColumnsService(new InMemoryColumnsRepository());
+        const loadQueueMessages = new FakeLoadQueueMessages();
 
         await QueueMessagesPanel.createOrShow(
             extensionUri(),
             { name: 'queue-a', connectionId: 'conn-a' },
             'Endpoint=sb://conn-a',
-            operations,
-            columnsService
+            loadQueueMessages
         );
 
         assert.ok(QueueMessagesPanel.currentPanel);
     });
 
     test('createOrShow reuses current panel and updates queue context', async () => {
-        const operations = new FakeMessageOperations();
-        const columnsService = new MessageGridColumnsService(new InMemoryColumnsRepository());
+        const loadQueueMessages = new FakeLoadQueueMessages();
 
         await QueueMessagesPanel.createOrShow(
             extensionUri(),
             { name: 'queue-a', connectionId: 'conn-a' },
             'Endpoint=sb://conn-a',
-            operations,
-            columnsService
+            loadQueueMessages
         );
         const initialPanel = QueueMessagesPanel.currentPanel;
         assert.ok(initialPanel);
@@ -43,8 +37,7 @@ suite('QueueMessagesPanel integration', () => {
             extensionUri(),
             { name: 'queue-b', connectionId: 'conn-b' },
             'Endpoint=sb://conn-b',
-            operations,
-            columnsService
+            loadQueueMessages
         );
         const reusedPanel = QueueMessagesPanel.currentPanel;
 
@@ -60,15 +53,13 @@ suite('QueueMessagesPanel integration', () => {
     });
 
     test('dispose clears currentPanel', async () => {
-        const operations = new FakeMessageOperations();
-        const columnsService = new MessageGridColumnsService(new InMemoryColumnsRepository());
+        const loadQueueMessages = new FakeLoadQueueMessages();
 
         await QueueMessagesPanel.createOrShow(
             extensionUri(),
             { name: 'queue-a', connectionId: 'conn-a' },
             'Endpoint=sb://conn-a',
-            operations,
-            columnsService
+            loadQueueMessages
         );
 
         QueueMessagesPanel.currentPanel?.dispose();
@@ -76,28 +67,23 @@ suite('QueueMessagesPanel integration', () => {
     });
 });
 
-class FakeMessageOperations implements MessageOperations {
-    async sendMessage(): Promise<void> {}
-    async deleteMessage(): Promise<void> {}
-
-    async peekMessages(): Promise<QueueMessage[]> {
-        return [];
+class FakeLoadQueueMessages implements LoadQueueMessages {
+    async loadInitial(): Promise<QueueMessagesPage> {
+        return {
+            headers: [],
+            rows: [],
+            messages: [],
+            hasMore: false
+        };
     }
 
-    async purgeQueue(): Promise<number> {
-        return 0;
-    }
-}
-
-class InMemoryColumnsRepository implements MessageGridColumnsRepository {
-    private columns: string[] = [];
-
-    async getPropertyColumns(): Promise<unknown> {
-        return this.columns;
-    }
-
-    async setPropertyColumns(columns: string[]): Promise<void> {
-        this.columns = [...columns];
+    async loadMore(): Promise<QueueMessagesPage> {
+        return {
+            headers: [],
+            rows: [],
+            messages: [],
+            hasMore: false
+        };
     }
 }
 

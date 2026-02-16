@@ -1,14 +1,15 @@
 import * as vscode from 'vscode';
 import type { Connection } from '../domain/models/Connection';
 import { ConnectionService } from '../domain/connections/ConnectionService';
-import { MessageMover } from '../domain/messages/MessageMover';
 import { QueueRegistryService } from '../domain/queues/QueueRegistryService';
 import { ConnectionTreeItem } from '../models/ConnectionTreeItem';
 import { Queue, QueueStats, QueueTreeItem } from '../models/Queue';
-import { Logger } from '../ports/Logger';
-import { Telemetry } from '../ports/Telemetry';
+import type { MoveMessages } from '../ports/primary/MoveMessages';
+import type { Logger } from '../ports/secondary/Logger';
+import type { Telemetry } from '../ports/secondary/Telemetry';
 import { parseDroppedMessages } from './dragDropMessageParser';
 import { mapMoveMessageToDomain, selectDropMessages, type MoveMessageData } from './connectionsProviderDropResolution';
+import { summarizeMoveResult } from './messageOperationSummary';
 import { QueueMessagesPanel } from './QueueMessagesPanel';
 
 export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTreeItem | QueueTreeItem>, vscode.TreeDragAndDropController<QueueTreeItem> {
@@ -23,7 +24,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
     constructor(
         private readonly connectionService: ConnectionService,
         private readonly queueRegistryService: QueueRegistryService,
-        private readonly messageMover: MessageMover,
+        private readonly moveMessages: MoveMessages,
         private readonly logger: Logger,
         private readonly telemetry: Telemetry
     ) {
@@ -245,11 +246,11 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
                 : `Moving message to ${target.queue.name}...`,
             cancellable: false
         }, async (progress) => {
-            return this.messageMover.moveMessages(
-                target.queue.name,
-                connectionString,
-                domainMessages,
-                (processed, total) => {
+            return this.moveMessages.move({
+                targetQueueName: target.queue.name,
+                targetConnectionString: connectionString,
+                messages: domainMessages,
+                onProgress: (processed, total) => {
                     if (total >= 10) {
                         const percentage = Math.round((processed / total) * 100);
                         progress.report({
@@ -258,25 +259,16 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
                         });
                     }
                 }
-            );
+            });
         });
 
-        if (results.failed.length === 0) {
-            const msg = isMultiple
-                ? `Successfully moved ${messageCount} messages to ${target.queue.name}`
-                : `Message moved to ${target.queue.name}`;
-            vscode.window.showInformationMessage(msg);
-        } else if (results.successful.length === 0) {
-            const failedIds = results.failed.map(f => f.message.messageId).join(', ');
-            vscode.window.showErrorMessage(
-                `Failed to move ${messageCount} message(s) to ${target.queue.name}. IDs: ${failedIds}`
-            );
+        const summary = summarizeMoveResult(target.queue.name, messageCount, results);
+        if (summary.level === 'info') {
+            vscode.window.showInformationMessage(summary.message);
+        } else if (summary.level === 'warning') {
+            vscode.window.showWarningMessage(summary.message);
         } else {
-            const failedIds = results.failed.map(f => `${f.message.messageId} (${f.error})`).join(', ');
-            vscode.window.showWarningMessage(
-                `Moved ${results.successful.length} of ${messageCount} messages to ${target.queue.name}. ` +
-                `Failed: ${failedIds}`
-            );
+            vscode.window.showErrorMessage(summary.message);
         }
 
         if (QueueMessagesPanel.currentPanel && results.successful.length > 0) {

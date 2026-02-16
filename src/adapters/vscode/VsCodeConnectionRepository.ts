@@ -1,6 +1,6 @@
 import type * as vscode from 'vscode';
 import type { Connection } from '../../domain/models/Connection';
-import type { ConnectionRepository } from '../../ports/ConnectionRepository';
+import type { ConnectionRepository } from '../../ports/secondary/ConnectionRepository';
 
 const CONNECTIONS_KEY = 'connections';
 

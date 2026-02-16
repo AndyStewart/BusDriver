@@ -1,14 +1,7 @@
 import * as vscode from 'vscode';
 import { Queue } from '../models/Queue';
-import type { MessageOperations, QueueMessage as PortQueueMessage } from '../ports/MessageOperations';
-import type {
-    MessageGridColumnsService,
-    MessageGridMessage,
-    MessageGridViewModel
-} from '../domain/messageGrid/MessageGridColumnsService';
-import { formatMessageBody } from './queueMessageBody';
+import type { LoadQueueMessages, QueueMessageView } from '../ports/primary/LoadQueueMessages';
 import { withSourceContext } from './queueMessageCommandData';
-import { getNextSequenceNumber } from './queueMessagePagination';
 import {
     buildAppendMessagesCommand,
     buildEmptyAppendMessagesCommand
@@ -16,14 +9,7 @@ import {
 import { resolveQueuePanelContext } from './queuePanelContext';
 import { serializeForInlineScript } from './webviewScriptData';
 
-export interface QueueMessage {
-    sequenceNumber: string;
-    messageId: string;
-    body: string;
-    rawBody: unknown;
-    properties: Record<string, unknown>;
-    enqueuedTime: string;
-    deliveryCount: number;
+export interface QueueMessage extends QueueMessageView {
     sourceQueue?: Queue;
     sourceConnectionString?: string;
 }
@@ -40,9 +26,7 @@ export class QueueMessagesPanel {
         panel: vscode.WebviewPanel,
         private readonly queue: Queue,
         private connectionString: string,
-        private readonly messageOperations: MessageOperations,
-        private readonly extensionUri: vscode.Uri,
-        private readonly messageGridColumnsService: MessageGridColumnsService
+        private readonly loadQueueMessages: LoadQueueMessages
     ) {
         this._panel = panel;
 
@@ -120,8 +104,7 @@ export class QueueMessagesPanel {
         extensionUri: vscode.Uri,
         queue: Queue,
         connectionString: string,
-        messageOperations: MessageOperations,
-        messageGridColumnsService: MessageGridColumnsService
+        loadQueueMessages: LoadQueueMessages
     ) {
         const column = vscode.window.activeTextEditor
             ? vscode.window.activeTextEditor.viewColumn
@@ -154,9 +137,7 @@ export class QueueMessagesPanel {
             panel,
             queue,
             connectionString,
-            messageOperations,
-            extensionUri,
-            messageGridColumnsService
+            loadQueueMessages
         );
     }
 
@@ -192,12 +173,12 @@ export class QueueMessagesPanel {
 
     private async _getHtmlForWebview(): Promise<string> {
         try {
-            const messages = await this._peekMessages('1');
-            const viewModel = await this.messageGridColumnsService.buildMessageGridView(
-                messages.map(message => this._toGridMessage(message))
-            );
-            const formattedMessages = messages.map(message => this._formatMessageForView(message));
-            const messagesJson = serializeForInlineScript(formattedMessages);
+            const page = await this.loadQueueMessages.loadInitial({
+                queueName: this.queue.name,
+                connectionString: this.connectionString,
+                pageSize: QueueMessagesPanel.pageSize
+            });
+            const messagesJson = serializeForInlineScript(page.messages);
 
             return `<!DOCTYPE html>
             <html lang="en">
@@ -440,7 +421,7 @@ export class QueueMessagesPanel {
                 <div class="header">
                     <div>
                         <h1>Queue: ${this.queue.name}</h1>
-                        <span class="message-count" id="messageCount">${messages.length} message(s) peeked</span>
+                        <span class="message-count" id="messageCount">${page.messages.length} message(s) peeked</span>
                     </div>
                     <div>
                         <button id="deleteButton" class="delete-button" onclick="deleteSelectedMessages()" disabled>Delete Message...</button>
@@ -451,7 +432,7 @@ export class QueueMessagesPanel {
                     </div>
                 </div>
                 <div class="grid-container" id="gridContainer">
-                    ${this._generateMessageTable(messages, viewModel)}
+                    ${this._generateMessageTable(page.headers, page.rows)}
                 </div>
                 <div class="splitter" id="splitter"></div>
                 <div class="details-container" id="detailsContainer">
@@ -854,12 +835,12 @@ export class QueueMessagesPanel {
         }
     }
 
-    private _generateMessageTable(messages: PortQueueMessage[], viewModel: MessageGridViewModel): string {
-        if (messages.length === 0) {
+    private _generateMessageTable(headers: string[], rows: string[][]): string {
+        if (rows.length === 0) {
             return '<div class="no-messages">No messages in queue</div>';
         }
 
-        const rows = viewModel.rows.map(cells => {
+        const tableRows = rows.map(cells => {
             const rowCells = cells.map((cell, index) => {
                 const value = this._escapeHtml(cell);
                 if (index === 0) {
@@ -878,11 +859,11 @@ export class QueueMessagesPanel {
             <table>
                 <thead>
                     <tr>
-                        ${viewModel.headers.map(header => `<th>${this._escapeHtml(header)}</th>`).join('')}
+                        ${headers.map(header => `<th>${this._escapeHtml(header)}</th>`).join('')}
                     </tr>
                 </thead>
                 <tbody>
-                    ${rows}
+                    ${tableRows}
                 </tbody>
             </table>
         `;
@@ -893,23 +874,19 @@ export class QueueMessagesPanel {
             return;
         }
 
-        const nextSequenceNumber = getNextSequenceNumber(fromSequenceNumber);
-        if (!nextSequenceNumber) {
-            this._panel.webview.postMessage(buildEmptyAppendMessagesCommand());
-            return;
-        }
-
         this._isLoadingMore = true;
         try {
-            const messages = await this._peekMessages(nextSequenceNumber);
-            const viewModel = await this.messageGridColumnsService.buildMessageGridView(
-                messages.map(message => this._toGridMessage(message))
-            );
-            const formattedMessages = messages.map(message => this._formatMessageForView(message));
-
-            this._panel.webview.postMessage(
-                buildAppendMessagesCommand(viewModel.rows, formattedMessages, QueueMessagesPanel.pageSize)
-            );
+            const page = await this.loadQueueMessages.loadMore({
+                queueName: this.queue.name,
+                connectionString: this.connectionString,
+                pageSize: QueueMessagesPanel.pageSize,
+                fromSequenceNumber
+            });
+            this._panel.webview.postMessage(buildAppendMessagesCommand(
+                page.rows,
+                page.messages,
+                QueueMessagesPanel.pageSize
+            ));
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             vscode.window.showErrorMessage(`Failed to load more messages: ${errorMessage}`);
@@ -917,40 +894,6 @@ export class QueueMessagesPanel {
         } finally {
             this._isLoadingMore = false;
         }
-    }
-
-    private async _peekMessages(fromSequenceNumber: string): Promise<PortQueueMessage[]> {
-        const options = { fromSequenceNumber };
-        return this.messageOperations.peekMessages(
-            this.queue.name,
-            this.connectionString,
-            QueueMessagesPanel.pageSize,
-            options
-        );
-    }
-
-    private _toGridMessage(message: PortQueueMessage): MessageGridMessage {
-        return {
-            sequenceNumber: message.sequenceNumber,
-            messageId: message.messageId,
-            enqueuedTime: message.enqueuedTime,
-            deliveryCount: message.deliveryCount,
-            properties: message.properties
-        };
-    }
-
-    private _formatMessageForView(message: PortQueueMessage): QueueMessage {
-        const { displayBody, rawBody } = formatMessageBody(message);
-
-        return {
-            sequenceNumber: message.sequenceNumber?.toString() || 'N/A',
-            messageId: message.messageId?.toString() || 'N/A',
-            enqueuedTime: message.enqueuedTime || 'N/A',
-            deliveryCount: message.deliveryCount ?? 0,
-            body: displayBody,
-            rawBody,
-            properties: message.properties || {}
-        };
     }
 
     private _escapeHtml(unsafe: string): string {

@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { AzureMessageOperations, ReceiverLike, SenderLike, ServiceBusClientLike } from '../../adapters/azure/AzureMessageOperations';
-import type { QueueMessage } from '../../ports/MessageOperations';
+import type { QueueMessage } from '../../ports/secondary/MessageOperations';
 
 describe('AzureMessageOperations', () => {
     it('sends messages with original metadata', async () => {

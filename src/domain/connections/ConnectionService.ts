@@ -1,5 +1,5 @@
 import type { Connection } from '../models/Connection';
-import type { ConnectionRepository } from '../../ports/ConnectionRepository';
+import type { ConnectionRepository } from '../../ports/secondary/ConnectionRepository';
 
 export type ConnectionValidationErrorCode =
     | 'EMPTY_NAME'

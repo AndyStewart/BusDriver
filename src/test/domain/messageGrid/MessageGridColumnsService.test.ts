@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { MessageGridColumnsService } from '../../../domain/messageGrid/MessageGridColumnsService';
-import type { MessageGridColumnsRepository } from '../../../ports/MessageGridColumnsRepository';
+import type { MessageGridColumnsRepository } from '../../../ports/secondary/MessageGridColumnsRepository';
 
 class FakeMessageGridColumnsRepository implements MessageGridColumnsRepository {
     constructor(public stored: unknown) {}

@@ -38,3 +38,4 @@ Use this template for each new ADR:
 ## Index
 - [ADR-0001: Use Ports-and-Adapters (Hexagonal) Architecture](./0001-use-ports-and-adapters-hexagonal-architecture.md)
 - [ADR-0002: TDD-First for Defects and Behavior Changes](./0002-tdd-first-for-defects-and-behavior-changes.md)
+- [ADR-0003: Explicit Primary and Secondary Ports](./0003-explicit-primary-secondary-ports.md)

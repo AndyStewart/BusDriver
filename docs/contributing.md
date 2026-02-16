@@ -15,6 +15,7 @@ Core aims:
 ## Contribution Principles
 - Keep changes small, focused, and easy to review.
 - Follow the existing ports-and-adapters architecture.
+- Keep port taxonomy explicit: inbound use-case interfaces belong in `src/ports/primary/**`, and outbound dependency interfaces belong in `src/ports/secondary/**`.
 - Never log secrets (connection strings, keys, tokens).
 - Prefer pure functions for parsing, normalization, and serialization logic.
 - Keep side effects at boundaries (providers, adapters, composition root).

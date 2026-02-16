@@ -4,17 +4,25 @@ import { AzureQueueRegistry } from './adapters/azure/AzureQueueRegistry';
 import { VsCodeConnectionRepository } from './adapters/vscode/VsCodeConnectionRepository';
 import { VsCodeLogger } from './adapters/vscode/VsCodeLogger';
 import { VsCodeMessageGridColumnsRepository } from './adapters/vscode/VsCodeMessageGridColumnsRepository';
+import { VsCodeQueueMessagesPanelGateway } from './adapters/vscode/VsCodeQueueMessagesPanelGateway';
 import { VsCodeTelemetry } from './adapters/vscode/VsCodeTelemetry';
+import { DeleteMessagesUseCase } from './application/useCases/DeleteMessagesUseCase';
+import { LoadQueueMessagesUseCase } from './application/useCases/LoadQueueMessagesUseCase';
+import { ListQueuesUseCase } from './application/useCases/ListQueuesUseCase';
+import { MoveMessagesUseCase } from './application/useCases/MoveMessagesUseCase';
+import { OpenQueueMessagesUseCase } from './application/useCases/OpenQueueMessagesUseCase';
+import { PurgeQueueUseCase } from './application/useCases/PurgeQueueUseCase';
 import { ConnectionService } from './domain/connections/ConnectionService';
 import { MessageGridColumnsService } from './domain/messageGrid/MessageGridColumnsService';
 import { MessageDeleter } from './domain/messages/MessageDeleter';
 import { MessageMover } from './domain/messages/MessageMover';
 import { MessageSender } from './domain/messages/MessageSender';
 import { QueueRegistryService } from './domain/queues/QueueRegistryService';
-import { ConnectionsProvider } from './providers/ConnectionsProvider';
-import { mapMoveMessageToDomain } from './providers/connectionsProviderDropResolution';
-import { QueueMessagesPanel, QueueMessage } from './providers/QueueMessagesPanel';
 import { Queue, QueueTreeItem } from './models/Queue';
+import { mapMoveMessageToDomain } from './providers/connectionsProviderDropResolution';
+import { summarizeDeleteResult, summarizeMoveResult } from './providers/messageOperationSummary';
+import { ConnectionsProvider } from './providers/ConnectionsProvider';
+import { QueueMessagesPanel, QueueMessage } from './providers/QueueMessagesPanel';
 
 let messageOperationsForDispose: AzureMessageOperations | undefined;
 
@@ -38,14 +46,26 @@ export function activate(context: vscode.ExtensionContext) {
     );
     const messageGridColumnsService = new MessageGridColumnsService(messageGridColumnsRepository);
 
+    const moveMessages = new MoveMessagesUseCase(messageMover);
+    const deleteMessages = new DeleteMessagesUseCase(messageDeleter);
+    const purgeQueue = new PurgeQueueUseCase(messageOperations);
+    const listQueues = new ListQueuesUseCase(queueRegistryService);
+    const loadQueueMessages = new LoadQueueMessagesUseCase(messageOperations, messageGridColumnsService);
+    const queueMessagesPanelGateway = new VsCodeQueueMessagesPanelGateway(
+        context.extensionUri,
+        loadQueueMessages
+    );
+    const openQueueMessages = new OpenQueueMessagesUseCase(connectionService, queueMessagesPanelGateway);
+
     // Create the connections provider
     const connectionsProvider = new ConnectionsProvider(
         connectionService,
         queueRegistryService,
-        messageMover,
+        moveMessages,
         logger,
         telemetry
     );
+
     // Register the tree view
     const treeView = vscode.window.createTreeView('busdriver.connections', {
         treeDataProvider: connectionsProvider,
@@ -96,16 +116,9 @@ export function activate(context: vscode.ExtensionContext) {
     const showQueueMessagesCommand = vscode.commands.registerCommand(
         'busdriver.showQueueMessages',
         async (item: QueueTreeItem) => {
-            const connectionString = await connectionsProvider.getConnectionString(item.queue.connectionId);
-            if (connectionString) {
-                await QueueMessagesPanel.createOrShow(
-                    context.extensionUri,
-                    item.queue,
-                    connectionString,
-                    messageOperations,
-                    messageGridColumnsService
-                );
-            } else {
+            try {
+                await openQueueMessages.open(item.queue);
+            } catch {
                 vscode.window.showErrorMessage('Connection string not found');
             }
         }
@@ -114,15 +127,13 @@ export function activate(context: vscode.ExtensionContext) {
     const moveMessageToQueueCommand = vscode.commands.registerCommand(
         'busdriver.moveMessageToQueue',
         async (messageData: QueueMessage | QueueMessage[]) => {
-            // Get all available queues
-            const allQueues = await connectionsProvider.getAllQueues();
+            const allQueues = await listQueues.list();
 
             if (allQueues.length === 0) {
                 vscode.window.showErrorMessage('No queues available');
                 return;
             }
 
-            // Show quick pick to select target queue
             const items = allQueues.map(q => ({
                 label: q.queue.name,
                 description: q.connection.name,
@@ -133,69 +144,48 @@ export function activate(context: vscode.ExtensionContext) {
                 placeHolder: 'Select target queue to move message to'
             });
 
-            if (selected) {
-                const targetConnection = await connectionService.getConnectionById(selected.queue.connectionId);
-                const targetConnectionString = targetConnection?.connectionString?.trim();
-
-                if (!targetConnectionString) {
-                    vscode.window.showErrorMessage('Connection string not found for target queue');
-                    return;
-                }
-
-                const messages = Array.isArray(messageData) ? messageData : [messageData];
-                const messageCount = messages.length;
-                const isMultiple = messageCount > 1;
-                const domainMessages = messages.map(message => mapMoveMessageToDomain(message));
-
-                const results = await vscode.window.withProgress({
-                    location: vscode.ProgressLocation.Notification,
-                    title: isMultiple
-                        ? `Moving ${messageCount} messages to ${selected.queue.name}...`
-                        : `Moving message to ${selected.queue.name}...`,
-                    cancellable: false
-                }, async (progress) => {
-                    return messageMover.moveMessages(
-                        selected.queue.name,
-                        targetConnectionString,
-                        domainMessages,
-                        (processed, total) => {
-                            if (total >= 10) {
-                                const percentage = Math.round((processed / total) * 100);
-                                progress.report({
-                                    increment: (1 / total) * 100,
-                                    message: `${processed}/${total} (${percentage}%)`
-                                });
-                            }
-                        }
-                    );
-                });
-
-                if (results.failed.length === 0) {
-                    const msg = isMultiple
-                        ? `Successfully moved ${messageCount} messages to ${selected.queue.name}`
-                        : `Message moved to ${selected.queue.name}`;
-                    vscode.window.showInformationMessage(msg);
-                } else if (results.successful.length === 0) {
-                    const failedIds = results.failed.map(f => f.message.messageId).join(', ');
-                    vscode.window.showErrorMessage(
-                        `Failed to move ${messageCount} message(s) to ${selected.queue.name}. IDs: ${failedIds}`
-                    );
-                } else {
-                    const failedIds = results.failed.map(f => `${f.message.messageId} (${f.error})`).join(', ');
-                    vscode.window.showWarningMessage(
-                        `Moved ${results.successful.length} of ${messageCount} messages to ${selected.queue.name}. ` +
-                        `Failed: ${failedIds}`
-                    );
-                }
-
-                if (QueueMessagesPanel.currentPanel && results.successful.length > 0) {
-                    for (const msg of results.successful) {
-                        QueueMessagesPanel.currentPanel.notifyMessageRemoved(msg.sequenceNumber);
-                    }
-                }
-
-                connectionsProvider.refresh();
+            if (!selected) {
+                return;
             }
+
+            const targetConnection = await connectionService.getConnectionById(selected.queue.connectionId);
+            const targetConnectionString = targetConnection?.connectionString?.trim();
+
+            if (!targetConnectionString) {
+                vscode.window.showErrorMessage('Connection string not found for target queue');
+                return;
+            }
+
+            const messages = Array.isArray(messageData) ? messageData : [messageData];
+            const messageCount = messages.length;
+            const domainMessages = messages.map(message => mapMoveMessageToDomain(message));
+
+            const results = await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: messageCount > 1
+                    ? `Moving ${messageCount} messages to ${selected.queue.name}...`
+                    : `Moving message to ${selected.queue.name}...`,
+                cancellable: false
+            }, async (progress) => {
+                return moveMessages.move({
+                    targetQueueName: selected.queue.name,
+                    targetConnectionString,
+                    messages: domainMessages,
+                    onProgress: (processed, total) => {
+                        reportProgress(progress, processed, total);
+                    }
+                });
+            });
+
+            showOperationSummary(summarizeMoveResult(selected.queue.name, messageCount, results));
+
+            if (QueueMessagesPanel.currentPanel && results.successful.length > 0) {
+                for (const msg of results.successful) {
+                    QueueMessagesPanel.currentPanel.notifyMessageRemoved(msg.sequenceNumber);
+                }
+            }
+
+            connectionsProvider.refresh();
         }
     );
 
@@ -209,61 +199,41 @@ export function activate(context: vscode.ExtensionContext) {
 
             const confirmation = await vscode.window.showWarningMessage(
                 messageCount === 1
-                    ? `Delete this message? This cannot be undone.`
+                    ? 'Delete this message? This cannot be undone.'
                     : `Delete ${messageCount} messages? This cannot be undone.`,
                 { modal: true },
                 'Delete'
             );
 
-            if (confirmation === 'Delete') {
-                if (!firstSource || domainMessages.some(message => !message.source)) {
-                    vscode.window.showErrorMessage('Cannot delete message: source queue information missing');
-                    return;
-                }
-
-                const results = await vscode.window.withProgress({
-                    location: vscode.ProgressLocation.Notification,
-                    title: messageCount > 1 ? `Deleting ${messageCount} messages...` : 'Deleting message...',
-                    cancellable: false
-                }, async (progress) => {
-                    return messageDeleter.deleteMessages(
-                        domainMessages,
-                        (processed, total) => {
-                            if (total >= 10) {
-                                const percentage = Math.round((processed / total) * 100);
-                                progress.report({
-                                    increment: (1 / total) * 100,
-                                    message: `${processed}/${total} (${percentage}%)`
-                                });
-                            }
-                        }
-                    );
-                });
-
-                if (results.failed.length === 0) {
-                    const msg = messageCount > 1
-                        ? `Successfully deleted ${messageCount} messages from ${firstSource.queueName}`
-                        : `Message deleted from ${firstSource.queueName}`;
-                    vscode.window.showInformationMessage(msg);
-                } else if (results.successful.length === 0) {
-                    const failedIds = results.failed.map(f => f.message.messageId).join(', ');
-                    vscode.window.showErrorMessage(
-                        `Failed to delete ${messageCount} message(s) from ${firstSource.queueName}. IDs: ${failedIds}`
-                    );
-                } else {
-                    const failedIds = results.failed.map(f => `${f.message.messageId} (${f.error})`).join(', ');
-                    vscode.window.showWarningMessage(
-                        `Deleted ${results.successful.length} of ${messageCount} messages from ${firstSource.queueName}. ` +
-                        `Failed: ${failedIds}`
-                    );
-                }
-
-                if (QueueMessagesPanel.currentPanel && results.successful.length > 0) {
-                    await QueueMessagesPanel.currentPanel.refreshView();
-                }
-
-                connectionsProvider.refresh();
+            if (confirmation !== 'Delete') {
+                return;
             }
+
+            if (!firstSource || domainMessages.some(message => !message.source)) {
+                vscode.window.showErrorMessage('Cannot delete message: source queue information missing');
+                return;
+            }
+
+            const results = await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: messageCount > 1 ? `Deleting ${messageCount} messages...` : 'Deleting message...',
+                cancellable: false
+            }, async (progress) => {
+                return deleteMessages.delete({
+                    messages: domainMessages,
+                    onProgress: (processed, total) => {
+                        reportProgress(progress, processed, total);
+                    }
+                });
+            });
+
+            showOperationSummary(summarizeDeleteResult(firstSource.queueName, messageCount, results));
+
+            if (QueueMessagesPanel.currentPanel && results.successful.length > 0) {
+                await QueueMessagesPanel.currentPanel.refreshView();
+            }
+
+            connectionsProvider.refresh();
         }
     );
 
@@ -293,7 +263,10 @@ export function activate(context: vscode.ExtensionContext) {
                 title: `Purging ${queue.name}...`,
                 cancellable: false
             }, async () => {
-                return messageOperations.purgeQueue(queue.name, connectionString);
+                return purgeQueue.purge({
+                    queueName: queue.name,
+                    connectionString
+                });
             });
 
             const resultMessage = purgedCount === 0
@@ -310,26 +283,19 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
-    // Handle double-click on queue items
     treeView.onDidChangeSelection(async (e) => {
         if (e.selection.length > 0) {
             const selected = e.selection[0];
             if (selected instanceof QueueTreeItem) {
-                const connectionString = await connectionsProvider.getConnectionString(selected.queue.connectionId);
-                if (connectionString) {
-                    await QueueMessagesPanel.createOrShow(
-                        context.extensionUri,
-                        selected.queue,
-                        connectionString,
-                        messageOperations,
-                        messageGridColumnsService
-                    );
+                try {
+                    await openQueueMessages.open(selected.queue);
+                } catch {
+                    vscode.window.showErrorMessage('Connection string not found');
                 }
             }
         }
     });
 
-    // Add disposables to context
     context.subscriptions.push(
         treeView,
         addConnectionCommand,
@@ -341,6 +307,30 @@ export function activate(context: vscode.ExtensionContext) {
         deleteMessagesCommand,
         purgeQueueCommand
     );
+}
+
+function reportProgress(progress: vscode.Progress<{ message?: string; increment?: number }>, processed: number, total: number): void {
+    if (total >= 10) {
+        const percentage = Math.round((processed / total) * 100);
+        progress.report({
+            increment: (1 / total) * 100,
+            message: `${processed}/${total} (${percentage}%)`
+        });
+    }
+}
+
+function showOperationSummary(summary: { level: 'info' | 'warning' | 'error'; message: string }): void {
+    if (summary.level === 'info') {
+        vscode.window.showInformationMessage(summary.message);
+        return;
+    }
+
+    if (summary.level === 'warning') {
+        vscode.window.showWarningMessage(summary.message);
+        return;
+    }
+
+    vscode.window.showErrorMessage(summary.message);
 }
 
 export function deactivate() {

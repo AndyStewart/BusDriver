@@ -1,4 +1,4 @@
-import type { Logger } from '../../ports/Logger';
+import type { Logger } from '../../ports/secondary/Logger';
 
 export class VsCodeLogger implements Logger {
     info(message: string, meta?: Record<string, unknown>): void {

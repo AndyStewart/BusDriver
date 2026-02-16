@@ -16,6 +16,7 @@ When guidance conflicts, use this order:
 - Keep domain code isolated from VS Code/Azure SDK details.
   - No VS Code/Azure imports in `src/domain/**`.
   - Depend on ports in `src/ports/**`; implement in adapters under `src/adapters/**`.
+  - Keep primary (inbound) ports in `src/ports/primary/**` and secondary (outbound) ports in `src/ports/secondary/**`.
 - For defects or behavior changes, follow TDD-first:
   1. Write a failing test.
   2. Implement minimal code to pass.
@@ -53,7 +54,9 @@ On non-trivial changes, verify and update as applicable:
 ## Repository Pointers
 - Runtime composition: `src/extension.ts`
 - Domain: `src/domain/**`
-- Ports: `src/ports/**`
+- Application use-cases: `src/application/**`
+- Primary ports: `src/ports/primary/**`
+- Secondary ports: `src/ports/secondary/**`
 - Adapters: `src/adapters/**`
 - Providers/UI orchestration: `src/providers/**`
 - Tests: `src/test/**` (compiled output in `out/test/**`)

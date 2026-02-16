@@ -1,4 +1,4 @@
-import type { MessageOperations } from '../../ports/MessageOperations';
+import type { MessageOperations } from '../../ports/secondary/MessageOperations';
 import type { MessageOperationResult, MessageWithSource } from './MessageTypes';
 import { MessageSender } from './MessageSender';
 

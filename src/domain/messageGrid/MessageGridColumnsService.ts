@@ -1,4 +1,4 @@
-import type { MessageGridColumnsRepository } from '../../ports/MessageGridColumnsRepository';
+import type { MessageGridColumnsRepository } from '../../ports/secondary/MessageGridColumnsRepository';
 import {
     buildMessageGridHeaders,
     buildPropertyRowCells,

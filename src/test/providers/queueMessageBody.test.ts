@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import type { QueueMessage } from '../../ports/MessageOperations';
+import type { QueueMessage } from '../../ports/secondary/MessageOperations';
 import { formatMessageBody } from '../../providers/queueMessageBody';
 
 describe('formatMessageBody', () => {

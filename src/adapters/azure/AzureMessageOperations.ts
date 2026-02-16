@@ -7,7 +7,7 @@ import type {
     MessageOperations,
     PeekMessagesOptions as PortPeekMessagesOptions,
     QueueMessage
-} from '../../ports/MessageOperations';
+} from '../../ports/secondary/MessageOperations';
 import { AzureClientFactory } from './AzureClientFactory';
 
 const DEFAULT_DELETE_MAX_WAIT_TIME_MS = 500;

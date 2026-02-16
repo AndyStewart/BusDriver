@@ -1,4 +1,4 @@
-import type { Telemetry } from '../../ports/Telemetry';
+import type { Telemetry } from '../../ports/secondary/Telemetry';
 
 export class VsCodeTelemetry implements Telemetry {
     trackEvent(name: string, properties?: Record<string, string>): void {

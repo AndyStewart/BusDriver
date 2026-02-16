@@ -3,7 +3,7 @@ import type {
     MessageOperations,
     PeekMessagesOptions,
     QueueMessage
-} from '../../ports/MessageOperations';
+} from '../../ports/secondary/MessageOperations';
 
 export class FakeMessageOperations implements MessageOperations {
     sent: Array<{ queueName: string; connectionString: string; message: QueueMessage }> = [];
