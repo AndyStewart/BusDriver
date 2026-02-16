@@ -7,9 +7,56 @@
   - `.eslintrc.json:1` — ESLint configuration and key rules.
   - `tsconfig.json:1` — TypeScript compiler options.
   - `.github/workflows/ci.yml:1` — CI steps and `xvfb-run` usage for tests.
+  - `docs/architecture.md:1` — technical architecture overview (layers, composition, runtime flow).
+  - `docs/adr/README.md:1` — ADR index and guidance for major design decisions.
+  - `docs/product.md:1` — product overview (what BusDriver is for and its aims).
+  - `docs/contributing.md:1` — contribution expectations (TDD-first workflow and quality gates).
+  - `docs/plans/` — living work plans (one plan per task, updated as progress is made).
   - `src/` — main source code.
   - `src/test/` or `out/test` — test sources/compiled tests (compiled tests are placed in `out` by `compile-tests`).
 - If you need details on any file referenced, open the file path above.
+
+**Documentation-First Context Loading**
+- Use progressive disclosure when gathering context:
+  1. Start with `docs/product.md` for user/problem framing and product aims.
+  2. Read `docs/architecture.md` for system boundaries and dependency direction.
+  3. Read `docs/adr/README.md` for major architectural decision history and constraints.
+  4. Read `docs/contributing.md` for process constraints and quality expectations.
+  5. Only then open code files relevant to the requested change.
+- Keep context minimal: load only the sections/files needed for the current task.
+- When a request is ambiguous, align decisions to product aims in `docs/product.md` before implementation.
+- For implementation work, explicitly follow `docs/contributing.md` gates:
+  - Defects/behavior changes must start with a failing test (TDD).
+  - Lint, compile/build, and tests must pass before completion.
+
+**Documentation Update Rule (Do Not Forget)**
+- Documentation updates are required as part of implementation, not optional follow-up work.
+- When behavior, architecture, workflow, or contribution expectations change, update docs in the same change set.
+- Minimum doc check on every non-trivial change:
+  - `docs/product.md` — update if purpose, scope, or aims changed.
+  - `docs/architecture.md` — update if layers, dependencies, or runtime flow changed.
+  - `docs/adr/` — add/update an ADR for any major architectural decision/change.
+  - `docs/contributing.md` — update if engineering process/quality gates changed.
+- Before finishing, verify documentation accuracy and call out doc updates in the change summary/PR description.
+
+**Planning Rule (Mandatory)**
+- All non-trivial work must start with a written plan stored in `docs/plans/`.
+- Treat plans as living documents: update the same plan file as work progresses.
+- Plans must be organized as small, top-down vertical slices.
+- Each slice must be independently deployable and independently testable.
+- Each slice must explicitly state:
+  - whether documentation updates are required
+  - whether the plan must be updated during/after that slice
+- Plans must contain enough context that a reviewer unfamiliar with BusDriver can assess whether the design is sound.
+- Minimum planning workflow:
+  1. Create a new plan file in `docs/plans/` before implementation starts.
+  2. Define goal, scope, architecture context, and concrete vertical slices.
+  3. Update progress during execution (completed steps, blockers, decisions).
+  4. Mark final status and summarize outcome before considering the task done.
+- Naming guidance:
+  - Use `docs/plans/YYYY-MM-DD-short-title.md` for plan files.
+  - Use `docs/plans/_template.md` as the starting format.
+- Do not treat planning as optional memory; if work changes direction, update the plan immediately.
 
 **Ports & Adapters Architecture**
 - BusDriver follows a hexagonal (ports and adapters) structure to keep domain logic isolated from VS Code and Azure SDK details.

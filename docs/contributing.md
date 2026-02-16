@@ -1,0 +1,51 @@
+# Contributing to BusDriver
+
+## Project Overview
+BusDriver is a VS Code extension for managing Azure Service Bus connections and queue messages from inside the editor.
+
+## Product Purpose and Aims
+BusDriver exists to reduce context switching during development and troubleshooting.
+
+Core aims:
+- keep common Service Bus operations inside VS Code
+- speed up debugging and issue resolution
+- provide safe, reliable message operations
+- maintain a clean, testable architecture that can evolve
+
+## Contribution Principles
+- Keep changes small, focused, and easy to review.
+- Follow the existing ports-and-adapters architecture.
+- Never log secrets (connection strings, keys, tokens).
+
+## Mandatory TDD Rule
+For **all defects and new behavior changes**:
+1. Write or update a test first.
+2. Run it and confirm it fails for the right reason.
+3. Implement the smallest code change to make it pass.
+4. Refactor while keeping tests green.
+
+No production fix should be merged without a corresponding test.
+
+## Quality Gates (Must Pass)
+Before opening or merging a PR, all of the following must pass:
+- lint
+- build/compile
+- tests
+
+Suggested local sequence:
+```bash
+npm run lint
+npm run compile
+npm run compile-tests
+npm test
+```
+
+## Pull Request Expectations
+- Explain the problem and the approach in 1-3 short paragraphs.
+- Link issue(s) when available.
+- Include test coverage for the change.
+- Keep unrelated refactors out of defect-fix PRs.
+
+## ADR Requirement for Major Architecture Changes
+- If a PR introduces a major architectural change, add or update an ADR in `docs/adr/`.
+- Include the ADR ID/title in the PR description so reviewers can validate rationale and tradeoffs.
