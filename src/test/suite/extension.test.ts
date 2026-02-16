@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { QueueTreeItem } from '../../models/Queue';
+import type { QueueMessage } from '../../providers/QueueMessagesPanel';
 import { QueueMessagesPanel } from '../../providers/QueueMessagesPanel';
 import { deactivate } from '../../extension';
 
@@ -46,6 +47,20 @@ suite('Extension Test Suite', () => {
 
     test('purgeQueue command exits when queue payload is missing', async () => {
         await vscode.commands.executeCommand('busdriver.purgeQueue', undefined);
+    });
+
+    test('moveMessageToQueue exits when no target queues are available', async () => {
+        const message: QueueMessage = {
+            sequenceNumber: '1',
+            messageId: 'message-1',
+            body: '{"hello":"world"}',
+            rawBody: '{"hello":"world"}',
+            properties: {},
+            enqueuedTime: '2026-02-16T00:00:00Z',
+            deliveryCount: 1
+        };
+
+        await vscode.commands.executeCommand('busdriver.moveMessageToQueue', message);
     });
 
     test('deactivate is safe to call repeatedly', () => {

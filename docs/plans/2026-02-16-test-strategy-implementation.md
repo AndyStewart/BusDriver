@@ -113,17 +113,20 @@ This approach is sound because each slice can ship independently, improves quali
 - 2026-02-16 21:00 - Slice 2 (partial): removed lint-rule suppression approach; switched `VsCodeMessageGridColumnsRepository` to explicit constructor injection only and wired dependencies in `extension.ts`. Added summary helper tests for move/delete result messaging logic.
 - 2026-02-16 21:10 - Slice 2 (partial): extracted `ConnectionsProvider` drop-resolution/message-mapping logic into a pure helper (`connectionsProviderDropResolution`) with direct unit coverage for pending-vs-parsed payload selection and domain message mapping behavior.
 - 2026-02-16 21:13 - Slice 2 (partial): expanded integration harness coverage in `src/test/suite/extension.test.ts` for additional command wiring plus non-interactive error/lifecycle paths (`showQueueMessages` missing-connection branch, `purgeQueue` missing-payload branch, and repeated `deactivate` safety).
+- 2026-02-16 21:17 - Slice 2 (partial): added `ConnectionsProvider` integration-harness tests for drag/drop orchestration (`handleDrop` pending-drag path, parsed-payload fallback, invalid-payload warning path), including move/delete side effects and panel notification behavior.
+- 2026-02-16 21:18 - Slice 2 (partial): added `QueueMessagesPanel` integration-harness tests for panel lifecycle and reuse behavior (`createOrShow` creation path, panel reuse/context update path, and `dispose` cleanup path).
+- 2026-02-16 21:19 - Slice 2 (partial): expanded extension integration coverage for non-interactive move command error handling (`moveMessageToQueue` no-target-queue branch).
 
 ## Slice 2 Status Snapshot
-- `src/providers/ConnectionsProvider.ts`: In progress.
-  - Covered via direct unit tests for extracted drop-resolution and message-mapping logic.
-  - Remaining: VS Code-bound orchestration paths (`handleDrop`, progress/reporting, and move result UI notifications) need harness-level integration coverage.
+- `src/providers/ConnectionsProvider.ts`: Completed for Slice 2 target coverage.
+  - Covered via direct unit tests for extracted drop-resolution/message-mapping helpers and integration-harness tests for `handleDrop` orchestration paths.
 - `src/providers/QueueMessagesPanel.ts`: In progress.
-  - Covered indirectly via helper tests (`resolveQueuePanelContext`, webview payload serialization, body formatting helpers).
-  - Remaining: direct tests for panel lifecycle/update behavior and command wiring boundaries.
+  - Covered by helper tests (`resolveQueuePanelContext`, webview payload serialization, body formatting) plus direct integration tests for lifecycle/reuse/dispose behavior.
+  - Remaining: webview message-command wiring boundaries (`moveToQueue`, `deleteMessages`, `purgeQueue`, and load-more interactions) are not yet directly covered.
 - `src/extension.ts`: Partially covered.
   - Integration tests now cover activation, extended command registration, missing-connection `showQueueMessages`, missing-payload `purgeQueue`, and repeated `deactivate` safety.
-  - Remaining: additional wiring/error branches for interactive command flows (`moveMessageToQueue`, `deleteMessages`, and confirm-path `purgeQueue`) where user input or Service Bus interactions are involved.
+  - Integration tests also cover the `moveMessageToQueue` no-target-queue branch.
+  - Remaining: additional wiring/error branches for interactive command flows (`deleteMessages` and confirm-path `purgeQueue`, plus queue-selection move flow) where user input or Service Bus interactions are involved.
 - `src/adapters/azure/AzureClientFactory.ts`: Completed for Slice 2 target coverage.
 - `src/adapters/vscode/VsCodeMessageGridColumnsRepository.ts`: Completed for Slice 2 target coverage.
 - `src/domain/messageGrid/MessageGridColumnsService.ts`: Completed for Slice 2 target coverage.
