@@ -8,6 +8,7 @@ import { ConnectionTreeItem } from '../models/ConnectionTreeItem';
 import { Queue, QueueStats, QueueTreeItem } from '../models/Queue';
 import { Logger } from '../ports/Logger';
 import { Telemetry } from '../ports/Telemetry';
+import { parseDroppedMessages } from './dragDropMessageParser';
 import { QueueMessagesPanel, QueueMessage as QueueMessageData } from './QueueMessagesPanel';
 
 
@@ -204,55 +205,29 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async handleDrop(target: QueueTreeItem | undefined, dataTransfer: vscode.DataTransfer, _token: vscode.CancellationToken): Promise<void> {
-        console.log('handleDrop called', target, dataTransfer);
-
         if (!target || !(target instanceof QueueTreeItem)) {
-            console.log('Target is not a QueueTreeItem');
             return;
         }
 
         // First, check if there's a pending drag message from the webview
         if (QueueMessagesPanel.pendingDragMessage) {
-            console.log('Using pending drag message(s)');
             const messages = QueueMessagesPanel.pendingDragMessage;
             QueueMessagesPanel.pendingDragMessage = undefined; // Clear it
             await this.processMessageMove(target, messages);
             return;
         }
 
-        // Try to get data from dataTransfer
-        const textUriData = dataTransfer.get('text/uri-list');
-        console.log('text/uri-list data:', textUriData);
+        const messages = parseDroppedMessages(
+            dataTransfer.get('text/uri-list')?.value,
+            dataTransfer.get('text/plain')?.value
+        );
 
-        if (textUriData) {
-            try {
-                const uri = textUriData.value;
-                if (uri.startsWith('busdriver-message:')) {
-                    const jsonData = decodeURIComponent(uri.substring('busdriver-message:'.length));
-                    const messages = JSON.parse(jsonData);
-                    console.log('Parsed message(s) from URI');
-                    await this.processMessageMove(target, messages);
-                    return;
-                }
-            } catch (e) {
-                console.error('Failed to parse URI data:', e);
-            }
+        if (!messages) {
+            this.logger.warn('Drop ignored because no valid BusDriver message payload was found');
+            return;
         }
 
-        // Try text/plain as fallback
-        const textData = dataTransfer.get('text/plain');
-        console.log('Trying text/plain:', textData);
-        if (textData) {
-            try {
-                const messages = JSON.parse(textData.value);
-                await this.processMessageMove(target, messages);
-                return;
-            } catch (e) {
-                console.error('Failed to parse text/plain data:', e);
-            }
-        }
-
-        console.log('No valid message data found in any format');
+        await this.processMessageMove(target, messages);
     }
 
     private async processMessageMove(target: QueueTreeItem, messageData: QueueMessageData | QueueMessageData[]): Promise<void> {

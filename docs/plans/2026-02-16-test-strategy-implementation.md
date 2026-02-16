@@ -105,20 +105,28 @@ This approach is sound because each slice can ship independently, improves quali
 ## Progress Log
 - 2026-02-16 00:00 - Created plan.
 - 2026-02-16 00:15 - Completed Slice 1: documented integration-test trigger policy, split test scripts into explicit unit/integration commands, and updated CI to run integration tests only when integration-relevant paths changed.
+- 2026-02-16 20:20 - Slice 2 (partial): added targeted unit tests for provider-facing helpers (`parseDroppedMessages`, `serializeForInlineScript`) and integrated them into `ConnectionsProvider`/`QueueMessagesPanel` to reduce payload-parsing and inline-script risks.
 
 ## Decisions and Notes
 - Integration tests are required when new/changed code affects integration-relevant behavior.
 - Coverage is for visibility and discussion only; no merge gates are introduced.
 - TDD-first policy remains mandatory for defects and behavior changes.
 - If implementation reveals a major architecture decision, add/update ADR per `docs/adr/README.md`.
+- For webview-bound message data, treat inline-script serialization as a dedicated concern with dedicated unit tests.
+- For drag/drop payloads, parse through a validated helper and avoid logging raw transfer payloads.
 
 ## Validation
-- [ ] Lint passes
-- [ ] Build/compile passes
-- [ ] Tests pass
+- [x] Lint passes
+- [x] Build/compile passes
+- [x] Tests pass
 - [ ] Docs updated (`docs/product.md`, `docs/architecture.md`, `docs/adr/`, `docs/contributing.md` as applicable)
 - [ ] Each completed slice is independently deployable and testable
 - [ ] Per-slice documentation and plan-maintenance fields were reviewed and applied
+
+## Lessons Learned
+- Provider-heavy code can still be tested quickly by extracting narrow, pure helper modules and placing tests under the unit test path.
+- Security-sensitive transformations (inline webview data) should be explicit utilities with focused tests rather than incidental string handling in large UI templates.
+- Logging discipline is easier to enforce when parsing/validation happens in a single helper that returns `undefined` for invalid payloads.
 
 ## Outcome
 In progress. Slice 1 completed; Slices 2 and 3 pending.

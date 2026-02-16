@@ -7,6 +7,7 @@ import type {
     MessageGridViewModel
 } from '../domain/messageGrid/MessageGridColumnsService';
 import { formatMessageBody } from './queueMessageBody';
+import { serializeForInlineScript } from './webviewScriptData';
 
 export interface QueueMessage {
     sequenceNumber: string;
@@ -65,7 +66,6 @@ export class QueueMessagesPanel {
                     case 'startDrag':
                         // Store the message data for drag operation
                         QueueMessagesPanel.pendingDragMessage = message.data;
-                        console.log('Stored pending drag message:', message.data.messageId);
                         return;
                     case 'moveToQueue': {
                         // User wants to move message(s) to another queue
@@ -189,7 +189,7 @@ export class QueueMessagesPanel {
                 messages.map(message => this._toGridMessage(message))
             );
             const formattedMessages = messages.map(message => this._formatMessageForView(message));
-            const messagesJson = JSON.stringify(formattedMessages);
+            const messagesJson = serializeForInlineScript(formattedMessages);
 
             return `<!DOCTYPE html>
             <html lang="en">
@@ -729,8 +729,6 @@ export class QueueMessagesPanel {
                         event.dataTransfer.setData('text/plain', dragDataJson);
                         event.dataTransfer.effectAllowed = 'copy';
                         
-                        const count = messagesToDrag.length;
-                        console.log('Drag started with ' + count + ' message(s)');
                     }
 
                     function wireRow(row, index) {
