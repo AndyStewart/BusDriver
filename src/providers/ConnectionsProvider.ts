@@ -2,15 +2,16 @@ import * as vscode from 'vscode';
 import type { Connection } from '../domain/models/Connection';
 import { ConnectionService } from '../domain/connections/ConnectionService';
 import { MessageMover } from '../domain/messages/MessageMover';
-import type { MessageWithSource } from '../domain/messages/MessageTypes';
+import type { MessageSource, MessageWithSource } from '../domain/messages/MessageTypes';
 import { QueueRegistryService } from '../domain/queues/QueueRegistryService';
 import { ConnectionTreeItem } from '../models/ConnectionTreeItem';
 import { Queue, QueueStats, QueueTreeItem } from '../models/Queue';
 import { Logger } from '../ports/Logger';
 import { Telemetry } from '../ports/Telemetry';
-import { parseDroppedMessages } from './dragDropMessageParser';
+import { parseDroppedMessages, type DroppedMessage } from './dragDropMessageParser';
 import { QueueMessagesPanel, QueueMessage as QueueMessageData } from './QueueMessagesPanel';
 
+type MoveMessageData = QueueMessageData | DroppedMessage;
 
 export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTreeItem | QueueTreeItem>, vscode.TreeDragAndDropController<QueueTreeItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<ConnectionTreeItem | QueueTreeItem | undefined | null | void> = new vscode.EventEmitter<ConnectionTreeItem | QueueTreeItem | undefined | null | void>();
@@ -230,7 +231,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         await this.processMessageMove(target, messages);
     }
 
-    private async processMessageMove(target: QueueTreeItem, messageData: QueueMessageData | QueueMessageData[]): Promise<void> {
+    private async processMessageMove(target: QueueTreeItem, messageData: MoveMessageData | MoveMessageData[]): Promise<void> {
         const connectionString = await this.getConnectionString(target.queue.connectionId);
 
         if (!connectionString) {
@@ -293,22 +294,34 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         this.refresh();
     }
 
-    private toMessageWithSource(messageData: QueueMessageData): MessageWithSource {
-        const source = messageData.sourceQueue && messageData.sourceConnectionString
-            ? {
-                queueName: messageData.sourceQueue.name,
-                connectionString: messageData.sourceConnectionString
-            }
-            : undefined;
+    private toMessageWithSource(messageData: MoveMessageData): MessageWithSource {
+        const source = this.extractSource(messageData);
+        const body = 'rawBody' in messageData ? messageData.rawBody : messageData.body;
 
         return {
-            body: messageData.rawBody ?? messageData.body,
+            body,
             messageId: messageData.messageId,
             properties: messageData.properties,
             enqueuedTime: messageData.enqueuedTime,
             deliveryCount: messageData.deliveryCount,
             sequenceNumber: messageData.sequenceNumber,
             source
+        };
+    }
+
+    private extractSource(messageData: MoveMessageData): MessageSource | undefined {
+        if (!('sourceQueue' in messageData)) {
+            return undefined;
+        }
+
+        const { sourceQueue, sourceConnectionString } = messageData;
+        if (!sourceQueue || typeof sourceConnectionString !== 'string' || sourceConnectionString.length === 0) {
+            return undefined;
+        }
+
+        return {
+            queueName: sourceQueue.name,
+            connectionString: sourceConnectionString
         };
     }
 }
