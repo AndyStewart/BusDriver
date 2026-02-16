@@ -26,19 +26,36 @@ For **all defects and new behavior changes**:
 
 No production fix should be merged without a corresponding test.
 
+## Integration Test Requirement
+Integration tests are required for PRs that introduce new code or modify integration-relevant behavior.
+
+Integration-relevant changes typically include:
+- command registration, activation, or extension wiring (`src/extension.ts`)
+- provider-level UI orchestration and command handlers (`src/providers/**`)
+- adapter behavior that affects VS Code or Azure runtime interactions (`src/adapters/**`)
+- changes to test/build wiring that affects extension runtime behavior (`package.json`, `tsconfig.json`, `esbuild.js`)
+
+Integration tests are usually not required for:
+- documentation-only changes
+- isolated refactors that do not alter integration-relevant behavior
+
+When unsure, prefer adding or running the integration test.
+
 ## Quality Gates (Must Pass)
 Before opening or merging a PR, all of the following must pass:
 - lint
 - build/compile
-- tests
+- required tests for the change (unit tests always; integration tests when integration-relevant code changed)
 
 Suggested local sequence:
 ```bash
 npm run lint
 npm run compile
-npm run compile-tests
-npm test
+npm run test:unit
+npm run test:integration
 ```
+
+If your change is not integration-relevant, `npm run test:unit` is the minimum required test run.
 
 ## Pull Request Expectations
 - Explain the problem and the approach in 1-3 short paragraphs.

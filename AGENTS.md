@@ -47,12 +47,13 @@
 - Each slice must explicitly state:
   - whether documentation updates are required
   - whether the plan must be updated during/after that slice
+- Plans must include a "lessons learned" section capturing key learnings discovered during implementation.
 - Plans must contain enough context that a reviewer unfamiliar with BusDriver can assess whether the design is sound.
 - Minimum planning workflow:
   1. Create a new plan file in `docs/plans/` before implementation starts.
   2. Define goal, scope, architecture context, and concrete vertical slices.
   3. Update progress during execution (completed steps, blockers, decisions).
-  4. Mark final status and summarize outcome before considering the task done.
+  4. Mark final status, summarize outcome, and record lessons learned before considering the task done.
 - Naming guidance:
   - Use `docs/plans/YYYY-MM-DD-short-title.md` for plan files.
   - Use `docs/plans/_template.md` as the starting format.

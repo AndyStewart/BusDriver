@@ -100,10 +100,10 @@
         "package": "node esbuild.js --production",
         "compile-tests": "tsc -p . --outDir out",
         "watch-tests": "tsc -p . -w --outDir out",
-        "pretest": "npm run compile-tests && npm run compile && npm run lint",
         "lint": "eslint src --ext ts",
-        "test:unit": "npx mocha \"out/test/adapters/**/*.js\"",
-        "test": "vscode-test"
+        "test:unit": "npm run compile-tests && npx mocha \"out/test/domain/**/*.test.js\" \"out/test/adapters/**/*.test.js\"",
+        "test:integration": "npm run compile-tests && npm run compile && vscode-test",
+        "test": "npm run test:unit && npm run test:integration"
     },
     "dependencies": {
         "@azure/identity": "^4.0.0",

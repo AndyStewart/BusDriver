@@ -29,8 +29,27 @@ jobs:
       - name: Build extension
         run: npm run compile
       
-      - name: Run tests
-        run: xvfb-run -a npm test
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Detect integration-relevant changes
+        id: change-filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            integration:
+              - 'src/**'
+              - 'package.json'
+              - 'tsconfig.json'
+              - 'esbuild.js'
+
+      - name: Run integration tests
+        if: steps.change-filter.outputs.integration == 'true'
+        run: xvfb-run -a npm run test:integration
+
+      - name: Skip integration tests
+        if: steps.change-filter.outputs.integration != 'true'
+        run: echo "No integration-relevant code changes detected; skipping integration tests."
       
       - name: Package extension
         if: github.ref == 'refs/heads/main'
