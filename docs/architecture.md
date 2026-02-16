@@ -32,6 +32,11 @@ Typical flow for a user action (for example, moving a message):
 4. Adapter performs concrete I/O (Azure SDK or VS Code API).
 5. Provider updates UI and surfaces success/error feedback.
 
+Boundary safety notes:
+- Treat webview-bound payloads as untrusted data; serialize safely before embedding in inline script contexts.
+- Parse and validate drag/drop payload transport data through dedicated helpers before orchestration logic consumes it.
+- Keep parsing/normalization helpers pure where practical, and apply mutations only at boundary layers.
+
 ## Testing Approach
 - **Unit tests (`src/test/domain`)** validate domain behavior with fakes.
 - **Adapter tests (`src/test/adapters`)** validate integration boundaries.

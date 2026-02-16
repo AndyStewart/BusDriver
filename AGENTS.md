@@ -12,6 +12,7 @@ When guidance conflicts, use this order:
 
 ## Hard Constraints (Non-Negotiable)
 - Never log secrets (connection strings, keys, tokens, raw sensitive payloads).
+- Do not embed raw `JSON.stringify(...)` output directly into inline `<script>` blocks in webviews; use safe serializer utilities.
 - Keep domain code isolated from VS Code/Azure SDK details.
   - No VS Code/Azure imports in `src/domain/**`.
   - Depend on ports in `src/ports/**`; implement in adapters under `src/adapters/**`.

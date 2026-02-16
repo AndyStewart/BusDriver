@@ -106,6 +106,8 @@ This approach is sound because each slice can ship independently, improves quali
 - 2026-02-16 00:00 - Created plan.
 - 2026-02-16 00:15 - Completed Slice 1: documented integration-test trigger policy, split test scripts into explicit unit/integration commands, and updated CI to run integration tests only when integration-relevant paths changed.
 - 2026-02-16 20:20 - Slice 2 (partial): added targeted unit tests for provider-facing helpers (`parseDroppedMessages`, `serializeForInlineScript`) and integrated them into `ConnectionsProvider`/`QueueMessagesPanel` to reduce payload-parsing and inline-script risks.
+- 2026-02-16 20:31 - Slice 2 (partial): fixed queue-panel reuse context bug by ensuring panel connection string updates alongside queue identity, with dedicated unit coverage for context updates.
+- 2026-02-16 20:37 - Slice 2 (partial): refactored queue-panel context helper to a pure function (`resolveQueuePanelContext`) and kept side effects at the provider boundary.
 
 ## Decisions and Notes
 - Integration tests are required when new/changed code affects integration-relevant behavior.
@@ -114,6 +116,7 @@ This approach is sound because each slice can ship independently, improves quali
 - If implementation reveals a major architecture decision, add/update ADR per `docs/adr/README.md`.
 - For webview-bound message data, treat inline-script serialization as a dedicated concern with dedicated unit tests.
 - For drag/drop payloads, parse through a validated helper and avoid logging raw transfer payloads.
+- Reused UI panels that carry operational credentials must update all mutable execution context fields, not just visible identity fields.
 
 ## Validation
 - [x] Lint passes
@@ -127,6 +130,8 @@ This approach is sound because each slice can ship independently, improves quali
 - Provider-heavy code can still be tested quickly by extracting narrow, pure helper modules and placing tests under the unit test path.
 - Security-sensitive transformations (inline webview data) should be explicit utilities with focused tests rather than incidental string handling in large UI templates.
 - Logging discipline is easier to enforce when parsing/validation happens in a single helper that returns `undefined` for invalid payloads.
+- Queue/connection context updates in reusable panels are a regression-prone area; small extracted helpers make these transitions explicit and testable.
+- Pure helper functions reduce regression risk and make high-risk context transitions easier to test and reason about.
 
 ## Outcome
 In progress. Slice 1 completed; Slices 2 and 3 pending.

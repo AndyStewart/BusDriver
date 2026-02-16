@@ -7,6 +7,7 @@ import type {
     MessageGridViewModel
 } from '../domain/messageGrid/MessageGridColumnsService';
 import { formatMessageBody } from './queueMessageBody';
+import { resolveQueuePanelContext } from './queuePanelContext';
 import { serializeForInlineScript } from './webviewScriptData';
 
 export interface QueueMessage {
@@ -32,7 +33,7 @@ export class QueueMessagesPanel {
     private constructor(
         panel: vscode.WebviewPanel,
         private readonly queue: Queue,
-        private readonly connectionString: string,
+        private connectionString: string,
         private readonly messageOperations: MessageOperations,
         private readonly extensionUri: vscode.Uri,
         private readonly messageGridColumnsService: MessageGridColumnsService
@@ -124,10 +125,13 @@ export class QueueMessagesPanel {
 
         // If we already have a panel, show it.
         if (QueueMessagesPanel.currentPanel) {
-            QueueMessagesPanel.currentPanel._panel.reveal(column);
-            QueueMessagesPanel.currentPanel.queue.name = queue.name;
-            QueueMessagesPanel.currentPanel.queue.connectionId = queue.connectionId;
-            await QueueMessagesPanel.currentPanel._update();
+            const currentPanel = QueueMessagesPanel.currentPanel;
+            currentPanel._panel.reveal(column);
+            const resolvedContext = resolveQueuePanelContext(queue, connectionString);
+            currentPanel.queue.name = resolvedContext.queue.name;
+            currentPanel.queue.connectionId = resolvedContext.queue.connectionId;
+            currentPanel.connectionString = resolvedContext.connectionString;
+            await currentPanel._update();
             return;
         }
 

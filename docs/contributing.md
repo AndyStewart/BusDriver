@@ -16,6 +16,8 @@ Core aims:
 - Keep changes small, focused, and easy to review.
 - Follow the existing ports-and-adapters architecture.
 - Never log secrets (connection strings, keys, tokens).
+- Prefer pure functions for parsing, normalization, and serialization logic.
+- Keep side effects at boundaries (providers, adapters, composition root).
 
 ## Mandatory TDD Rule
 For **all defects and new behavior changes**:
