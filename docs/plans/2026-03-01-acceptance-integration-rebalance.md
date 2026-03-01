@@ -191,6 +191,8 @@ This preserves confidence while reducing overlap and avoiding a brittle push tow
 - 2026-03-01 16:15 - Acceptance validation for Slice 1: `npm run test:acceptance` passed (7 tests).
 - 2026-03-01 16:20 - Slice 2 implemented: added acceptance test for `moveMessageToQueue` with no available target queues and removed matching integration assertion.
 - 2026-03-01 16:23 - Validation for Slice 2: `npm run compile-tests`, `npm run test:integration`, and `npm run test:acceptance` passed (8 acceptance tests).
+- 2026-03-01 16:26 - Slice 3 implemented: removed integration panel creation assertion now covered by acceptance "open messages for a queue" scenario.
+- 2026-03-01 16:28 - Validation for Slice 3: `npm run compile-tests`, `npm run test:integration`, and `npm run test:acceptance` passed.
 
 ## Decisions and Notes
 - Initial decision: do not remove integration tests until acceptance parity is proven for each mapped assertion.

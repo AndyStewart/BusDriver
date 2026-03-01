@@ -8,19 +8,6 @@ suite('QueueMessagesPanel integration', () => {
         QueueMessagesPanel.currentPanel?.dispose();
     });
 
-    test('createOrShow creates a panel and stores it as currentPanel', async () => {
-        const loadQueueMessages = new FakeLoadQueueMessages();
-
-        await QueueMessagesPanel.createOrShow(
-            extensionUri(),
-            { name: 'queue-a', connectionId: 'conn-a' },
-            'Endpoint=sb://conn-a',
-            loadQueueMessages
-        );
-
-        assert.ok(QueueMessagesPanel.currentPanel);
-    });
-
     test('createOrShow reuses current panel and updates queue context', async () => {
         const loadQueueMessages = new FakeLoadQueueMessages();
 
