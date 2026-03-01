@@ -58,6 +58,26 @@ suite('Acceptance: User-facing features', () => {
             .run();
     });
 
+    test('queue messages view uses a safe page structure', async () => {
+        await specScenario('Queue messages page safety contract')
+            .givenConnection('acceptance-open-html', connectionString!)
+            .givenQueues(['orders'])
+            .whenOpenQueueMessages('orders')
+            .thenQueuePanelHtmlIncludes([
+                '<link rel="stylesheet" href="',
+                '<script src="',
+                'id="queueMessagesInitialData"',
+                'data-view="queue-messages-panel"',
+                '<h1 id="queueTitle"></h1>'
+            ])
+            .thenQueuePanelHtmlExcludes([
+                '<h1>Queue:',
+                'onclick=',
+                'const vscode = acquireVsCodeApi();'
+            ])
+            .run();
+    });
+
     test('user can add, refresh, and remove a connection', async () => {
         const connectionName = `acceptance-add-delete-${Date.now()}`;
 
