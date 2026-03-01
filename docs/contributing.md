@@ -70,7 +70,8 @@ Acceptance tests validate exposed user-facing command flows against a real Servi
 Current acceptance suite focus:
 - user-visible command flows (open, move, delete, purge, connection management, column configuration)
 - queue messages panel lifecycle and queue-switch behavior
-- queue messages panel HTML safety contract checks
+
+Technical UI-contract checks (for example, webview HTML template structure/safety) belong in lower-level tests, preferably unit tests.
 
 Local command:
 ```bash

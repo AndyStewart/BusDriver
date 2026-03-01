@@ -45,7 +45,7 @@ Boundary safety notes:
 ## Testing Approach
 - **Unit tests (`src/test/features/**/{application,adapters}` and `src/test/shared/**`)** validate feature behavior and shared boundaries.
 - **Extension/integration tests (`src/test/**/**/*.integration.test.ts`)** run through `vscode-test` and focus on production-mode extension smoke wiring plus connection-tree drag/drop adapter integration behavior.
-- **Acceptance tests (`src/test/acceptance/**/*.acceptance.integration.test.ts`)** run user-facing command flows against a real Azure Service Bus namespace using a spec-style DSL, including queue panel lifecycle and HTML safety contract checks.
+- **Acceptance tests (`src/test/acceptance/**/*.acceptance.integration.test.ts`)** run user-facing command flows against a real Azure Service Bus namespace using a spec-style DSL.
 
 Acceptance-mode runtime notes:
 - `BUSDRIVER_ACCEPTANCE_MODE=1` enables hidden `busdriver.__test.*` setup commands used only by acceptance harnesses.

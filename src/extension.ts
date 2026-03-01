@@ -408,15 +408,6 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             ),
             vscode.commands.registerCommand(
-                'busdriver.__test.getOpenQueuePanelHtml',
-                async () => {
-                    const panel = QueueMessagesPanel.currentPanel as unknown as {
-                        _panel?: { webview?: { html?: string } };
-                    } | undefined;
-                    return panel?._panel?.webview?.html;
-                }
-            ),
-            vscode.commands.registerCommand(
                 'busdriver.__test.closeQueuePanel',
                 async () => {
                     QueueMessagesPanel.currentPanel?.dispose();

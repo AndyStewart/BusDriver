@@ -259,38 +259,6 @@ export class AcceptanceScenarioBuilder {
         return this;
     }
 
-    thenQueuePanelHtmlIncludes(snippets: string[]): AcceptanceScenarioBuilder {
-        this.steps.push(async () => {
-            const html = await waitForValue(async () => {
-                const value = await vscode.commands.executeCommand<string | undefined>('busdriver.__test.getOpenQueuePanelHtml');
-                return value && value.length > 0 ? value : undefined;
-            });
-            assert.ok(html, 'Expected queue panel HTML to be available');
-
-            for (const snippet of snippets) {
-                assert.ok(html.includes(snippet), `Expected queue panel HTML to include '${snippet}'`);
-            }
-        });
-
-        return this;
-    }
-
-    thenQueuePanelHtmlExcludes(snippets: string[]): AcceptanceScenarioBuilder {
-        this.steps.push(async () => {
-            const html = await waitForValue(async () => {
-                const value = await vscode.commands.executeCommand<string | undefined>('busdriver.__test.getOpenQueuePanelHtml');
-                return value && value.length > 0 ? value : undefined;
-            });
-            assert.ok(html, 'Expected queue panel HTML to be available');
-
-            for (const snippet of snippets) {
-                assert.ok(!html.includes(snippet), `Expected queue panel HTML to exclude '${snippet}'`);
-            }
-        });
-
-        return this;
-    }
-
     whenMoveMessages(sourceAlias: string, targetAlias: string, messageIds: string[]): AcceptanceScenarioBuilder {
         this.steps.push(async (context) => {
             assert.ok(context.connectionString, 'Connection string must exist before moving messages');
