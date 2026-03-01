@@ -1,4 +1,4 @@
-import type { Queue } from '../../queues/adapters/TreeQueueItemAdapter';
+import type { Queue } from '../../../shared/ports/Queue';
 
 export interface MessageWithOptionalSource {
     sourceQueue?: Queue;

@@ -3,29 +3,22 @@ import * as vscode from 'vscode';
 import { MoveMessagesUseCase } from '../../../../features/queueMessages/application/MoveMessagesUseCase';
 import type { Connection } from '../../../../features/connections/application/Connection';
 import { ConnectionService } from '../../../../features/connections/application/ConnectionService';
+import type { QueueMessageData } from '../../../../features/connections/adapters/MessageMoveAdapter';
 import { MessageMover } from '../../../../features/queueMessages/application/MessageMover';
 import { MessageSender } from '../../../../features/queueMessages/application/MessageSender';
 import { QueueRegistryService } from '../../../../features/queues/application/QueueRegistryService';
-import { QueueTreeItem } from '../../../../features/queues/adapters/TreeQueueItemAdapter';
 import type { ConnectionRepository } from '../../../../features/connections/ports/ConnectionRepository';
+import { QueueTreeItem } from '../../../../shared/adapters/vscode/QueueTreeItemAdapter';
 import type { Logger } from '../../../../shared/ports/Logger';
 import type { MessageOperations, QueueMessage } from '../../../../features/queueMessages/ports/MessageOperations';
 import type { QueueRegistry } from '../../../../features/queues/ports/QueueRegistry';
 import type { Telemetry } from '../../../../shared/ports/Telemetry';
-import { ConnectionsProvider } from '../../../../features/connections/adapters/TreeConnectionsAdapter';
-import { QueueMessagesPanel } from '../../../../features/queueMessages/adapters/WebviewQueueMessagesPanelAdapter';
+import { ConnectionsProvider, type QueueRegistryPort } from '../../../../features/connections/adapters/TreeConnectionsAdapter';
 
 suite('ConnectionsProvider integration', () => {
     test('handleDrop uses pending drag messages and clears pending state', async () => {
-        const { provider, operations, logger, target } = createFixture();
-        const notifications: string[] = [];
-        (QueueMessagesPanel as unknown as { currentPanel: { notifyMessageRemoved(sequenceNumber: string): void } | undefined }).currentPanel = {
-            notifyMessageRemoved(sequenceNumber: string): void {
-                notifications.push(sequenceNumber);
-            }
-        };
-
-        QueueMessagesPanel.pendingDragMessage = {
+        const { provider, operations, logger, target, bridge } = createFixture();
+        bridge.pendingDragMessage = {
             sequenceNumber: '1',
             messageId: 'pending-message',
             body: '{"type":"pending"}',
@@ -39,20 +32,19 @@ suite('ConnectionsProvider integration', () => {
 
         await provider.handleDrop(target, new vscode.DataTransfer(), new vscode.CancellationTokenSource().token);
 
-        assert.strictEqual(QueueMessagesPanel.pendingDragMessage, undefined);
+        assert.strictEqual(bridge.pendingDragMessage, undefined);
         assert.strictEqual(operations.sendCalls.length, 1);
         assert.strictEqual(operations.sendCalls[0].queueName, 'target-queue');
         assert.deepStrictEqual(operations.sendCalls[0].message.body, { type: 'pending' });
         assert.strictEqual(operations.deleteCalls.length, 1);
         assert.strictEqual(operations.deleteCalls[0].queueName, 'source-queue');
-        assert.deepStrictEqual(notifications, ['1']);
+        assert.deepStrictEqual(bridge.notifications, ['1']);
         assert.strictEqual(logger.warnCalls.length, 0);
-        QueueMessagesPanel.currentPanel = undefined;
     });
 
     test('handleDrop falls back to dropped payload when pending state is absent', async () => {
-        const { provider, operations, target } = createFixture();
-        QueueMessagesPanel.pendingDragMessage = undefined;
+        const { provider, operations, target, bridge } = createFixture();
+        bridge.pendingDragMessage = undefined;
 
         const transfer = new vscode.DataTransfer();
         transfer.set('text/plain', new vscode.DataTransferItem(JSON.stringify([{
@@ -72,8 +64,8 @@ suite('ConnectionsProvider integration', () => {
     });
 
     test('handleDrop warns and exits when payload is invalid', async () => {
-        const { provider, operations, logger, target } = createFixture();
-        QueueMessagesPanel.pendingDragMessage = undefined;
+        const { provider, operations, logger, target, bridge } = createFixture();
+        bridge.pendingDragMessage = undefined;
 
         const transfer = new vscode.DataTransfer();
         transfer.set('text/plain', new vscode.DataTransferItem('{not-json'));
@@ -90,6 +82,7 @@ function createFixture(): {
     operations: FakeMessageOperations;
     logger: FakeLogger;
     target: QueueTreeItem;
+    bridge: FakeQueueMessagesBridge;
 } {
     const targetConnection: Connection = {
         id: 'target-connection',
@@ -106,18 +99,21 @@ function createFixture(): {
 
     const connectionRepository = new InMemoryConnectionRepository([targetConnection, sourceConnection]);
     const connectionService = new ConnectionService(connectionRepository);
-    const queueRegistryService = new QueueRegistryService(new EmptyQueueRegistry(), connectionRepository);
+    const queueRegistryService: QueueRegistryPort = new QueueRegistryService(new EmptyQueueRegistry(), connectionRepository);
     const operations = new FakeMessageOperations();
     const moveMessages = new MoveMessagesUseCase(new MessageMover(new MessageSender(operations), operations));
     const logger = new FakeLogger();
     const telemetry = new NoopTelemetry();
+    const bridge = new FakeQueueMessagesBridge();
 
     const provider = new ConnectionsProvider(
         connectionService,
         queueRegistryService,
         moveMessages,
         logger,
-        telemetry
+        telemetry,
+        undefined,
+        bridge
     );
 
     const target = new QueueTreeItem(
@@ -126,7 +122,22 @@ function createFixture(): {
         vscode.TreeItemCollapsibleState.None
     );
 
-    return { provider, operations, logger, target };
+    return { provider, operations, logger, target, bridge };
+}
+
+class FakeQueueMessagesBridge {
+    public pendingDragMessage: QueueMessageData | QueueMessageData[] | undefined;
+    public notifications: string[] = [];
+
+    consumePendingDragMessage(): QueueMessageData | QueueMessageData[] | undefined {
+        const current = this.pendingDragMessage;
+        this.pendingDragMessage = undefined;
+        return current;
+    }
+
+    notifyMessageRemoved(sequenceNumber: string): void {
+        this.notifications.push(sequenceNumber);
+    }
 }
 
 class FakeMessageOperations implements MessageOperations {

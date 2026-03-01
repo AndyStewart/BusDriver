@@ -130,7 +130,17 @@ export function activate(context: vscode.ExtensionContext) {
         moveMessages,
         logger,
         telemetry,
-        ACCEPTANCE_MODE ? acceptanceAwareUi : undefined
+        ACCEPTANCE_MODE ? acceptanceAwareUi : undefined,
+        {
+            consumePendingDragMessage: () => {
+                const pendingDragMessage = QueueMessagesPanel.pendingDragMessage;
+                QueueMessagesPanel.pendingDragMessage = undefined;
+                return pendingDragMessage;
+            },
+            notifyMessageRemoved: (sequenceNumber: string) => {
+                QueueMessagesPanel.currentPanel?.notifyMessageRemoved(sequenceNumber);
+            }
+        }
     );
 
     // Register the tree view

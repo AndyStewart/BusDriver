@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { promises as fs } from 'fs';
-import { Queue } from '../../queues/adapters/TreeQueueItemAdapter';
+import type { Queue } from '../../../shared/ports/Queue';
 import type { LoadQueueMessages, QueueMessageView } from '../ports/LoadQueueMessages';
 import { withSourceContext } from './WebviewQueueMessageCommandAdapter';
 import {

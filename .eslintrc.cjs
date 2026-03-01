@@ -121,15 +121,9 @@ module.exports = {
         },
         {
             files: ['src/features/**/adapters/**/*.ts'],
-            excludedFiles: [
-                'src/features/connections/adapters/TreeConnectionsAdapter.ts',
-                'src/features/queueMessages/adapters/WebviewQueueMessagesPanelAdapter.ts',
-                'src/features/queueMessages/adapters/WebviewQueuePanelContextAdapter.ts',
-                'src/features/queueMessages/adapters/WebviewQueueMessageCommandAdapter.ts'
-            ],
             rules: {
                 'no-restricted-imports': [
-                    'warn',
+                    'error',
                     {
                         patterns: [
                             {

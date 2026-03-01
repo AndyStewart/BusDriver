@@ -61,7 +61,7 @@ Lint policy note:
 - Architecture boundary rules are enforced in ESLint:
   - no feature-to-feature imports in `application` and `ports` layers
   - `application` and `ports` must not depend on VS Code/Azure SDKs or adapter implementations
-  - adapter-level cross-feature restrictions are staged with explicit temporary carve-outs during migration
+  - adapter layers must not import from other feature slices; use `src/shared/**` contracts and composition-root wiring
 - Safety guardrails are lint-enforced:
   - console usage is restricted to explicit boundary files (logger/composition/test paths)
   - webview inline script payloads must use safe serialization helpers

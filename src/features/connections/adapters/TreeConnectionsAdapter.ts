@@ -1,16 +1,20 @@
 import * as vscode from 'vscode';
 import type { Connection } from '../application/Connection';
 import { ConnectionService } from '../application/ConnectionService';
-import { QueueRegistryService } from '../../queues/application/QueueRegistryService';
 import { ConnectionTreeItem } from './TreeConnectionItemAdapter';
-import { Queue, QueueStats, QueueTreeItem } from '../../queues/adapters/TreeQueueItemAdapter';
-import type { MoveMessages } from '../../queueMessages/ports/MoveMessages';
+import type { Queue, QueueStats } from '../../../shared/ports/Queue';
+import { QueueTreeItem } from '../../../shared/adapters/vscode/QueueTreeItemAdapter';
 import type { Logger } from '../../../shared/ports/Logger';
 import type { Telemetry } from '../../../shared/ports/Telemetry';
-import { parseDroppedMessages } from '../../queueMessages/adapters/TreeDropMessageParserAdapter';
-import { mapMoveMessageToDomain, selectDropMessages, type MoveMessageData } from '../../queueMessages/adapters/TreeMessageDropAdapter';
-import { summarizeMoveResult } from '../../queueMessages/adapters/CommandMessageOperationSummaryAdapter';
-import { QueueMessagesPanel } from '../../queueMessages/adapters/WebviewQueueMessagesPanelAdapter';
+import {
+    mapMoveMessageToDomain,
+    parseDroppedMessages,
+    type MoveMessageData,
+    type MoveMessagesPort,
+    selectDropMessages,
+    summarizeMoveResult,
+    type QueueMessageData
+} from './MessageMoveAdapter';
 
 export interface ConnectionsProviderUi {
     showInputBox(options?: vscode.InputBoxOptions): Thenable<string | undefined>;
@@ -41,6 +45,21 @@ const defaultConnectionsProviderUi: ConnectionsProviderUi = {
     withProgress: (options, task) => vscode.window.withProgress(options, task)
 };
 
+export interface QueueRegistryPort {
+    listQueuesForConnection(connection: Connection): Promise<Array<{ name: string; connectionId: string; activeMessageCount: number }>>;
+    listAllQueues(): Promise<Array<{ queue: { name: string; connectionId: string; activeMessageCount: number }; connection: Connection }>>;
+}
+
+export interface QueueMessagesBridge {
+    consumePendingDragMessage(): QueueMessageData | QueueMessageData[] | undefined;
+    notifyMessageRemoved(sequenceNumber: string): void;
+}
+
+const defaultQueueMessagesBridge: QueueMessagesBridge = {
+    consumePendingDragMessage: () => undefined,
+    notifyMessageRemoved: () => undefined
+};
+
 export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTreeItem | QueueTreeItem>, vscode.TreeDragAndDropController<QueueTreeItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<ConnectionTreeItem | QueueTreeItem | undefined | null | void> = new vscode.EventEmitter<ConnectionTreeItem | QueueTreeItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<ConnectionTreeItem | QueueTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
@@ -52,11 +71,12 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
 
     constructor(
         private readonly connectionService: ConnectionService,
-        private readonly queueRegistryService: QueueRegistryService,
-        private readonly moveMessages: MoveMessages,
+        private readonly queueRegistryService: QueueRegistryPort,
+        private readonly moveMessages: MoveMessagesPort,
         private readonly logger: Logger,
         private readonly telemetry: Telemetry,
-        private readonly ui: ConnectionsProviderUi = defaultConnectionsProviderUi
+        private readonly ui: ConnectionsProviderUi = defaultConnectionsProviderUi,
+        private readonly queueMessagesBridge: QueueMessagesBridge = defaultQueueMessagesBridge
     ) {
         void this.loadConnections();
     }
@@ -239,8 +259,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
             return;
         }
 
-        const pendingDragMessages = QueueMessagesPanel.pendingDragMessage;
-        QueueMessagesPanel.pendingDragMessage = undefined;
+        const pendingDragMessages = this.queueMessagesBridge.consumePendingDragMessage();
 
         const parsedMessages = parseDroppedMessages(
             getDataTransferString(dataTransfer, 'text/uri-list'),
@@ -301,10 +320,8 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
             void this.ui.showErrorMessage(summary.message);
         }
 
-        if (QueueMessagesPanel.currentPanel && results.successful.length > 0) {
-            for (const msg of results.successful) {
-                QueueMessagesPanel.currentPanel.notifyMessageRemoved(msg.sequenceNumber);
-            }
+        for (const msg of results.successful) {
+            this.queueMessagesBridge.notifyMessageRemoved(msg.sequenceNumber);
         }
 
         this.refresh();
