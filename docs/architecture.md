@@ -32,6 +32,7 @@ This keeps domain logic testable and independent from VS Code/Azure details.
 - Feature-to-feature imports are disallowed by lint policy. Shared contracts must be extracted to `src/shared/**`.
 - `application` and `ports` layers are SDK/framework-agnostic and must not import VS Code/Azure SDKs or adapter implementations.
 - `adapters` layers are also protected from cross-feature imports; cross-feature collaboration must go through shared contracts or composition-root wiring.
+- Feature ports are interface-only contracts; type aliases and type re-exports are disallowed.
 
 ## Data and Control Flow
 Typical flow for a user action (for example, moving a message):

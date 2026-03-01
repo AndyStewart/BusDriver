@@ -1,5 +1,5 @@
-import type { Connection } from '../../../shared/ports/Connection';
-import type { ConnectionLookup } from '../../../shared/ports/ConnectionLookup';
+import type { Connection } from '../application/Connection';
+import type { ConnectionLookup } from '../application/ConnectionLookup';
 
 export interface ConnectionRepository extends ConnectionLookup {
     save(connection: Connection): Promise<void>;

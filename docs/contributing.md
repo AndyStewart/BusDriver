@@ -62,6 +62,7 @@ Lint policy note:
   - no feature-to-feature imports in `application` and `ports` layers
   - `application` and `ports` must not depend on VS Code/Azure SDKs or adapter implementations
   - adapter layers must not import from other feature slices; use `src/shared/**` contracts and composition-root wiring
+  - feature port files are interface-only contracts; `type` aliases/re-exports are not allowed
 - Safety guardrails are lint-enforced:
   - console usage is restricted to explicit boundary files (logger/composition/test paths)
   - webview inline script payloads must use safe serialization helpers

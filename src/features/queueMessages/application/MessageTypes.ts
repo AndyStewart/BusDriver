@@ -3,4 +3,4 @@ export type {
     MessageOperationResult,
     MessageSource,
     MessageWithSource
-} from '../ports/MessageOperationTypes';
+} from './MessageOperationTypes';

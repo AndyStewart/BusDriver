@@ -98,7 +98,29 @@ module.exports = {
             }
         },
         {
-            files: ['src/features/**/ports/**/*.ts', 'src/shared/ports/**/*.ts'],
+            files: ['src/features/**/ports/**/*.ts'],
+            rules: {
+                'no-restricted-imports': [
+                    'error',
+                    {
+                        paths: [
+                            {
+                                name: 'vscode',
+                                message: 'Port contracts must remain framework-agnostic.'
+                            }
+                        ],
+                        patterns: [
+                            {
+                                group: ['@azure/*', '../adapters/**', '../../*/adapters/**', '../../../shared/adapters/**'],
+                                message: 'Port contracts must not depend on application/adapters or SDK implementations.'
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            files: ['src/shared/ports/**/*.ts'],
             rules: {
                 'no-restricted-imports': [
                     'error',
@@ -117,6 +139,12 @@ module.exports = {
                         ]
                     }
                 ]
+            }
+        },
+        {
+            files: ['src/features/**/ports/**/*.ts'],
+            rules: {
+                'port-interface-application-types': 'error'
             }
         },
         {
