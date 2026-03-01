@@ -47,7 +47,7 @@ describe('AzureMessageOperations', () => {
             applicationProperties: {
                 correlationId: 'abc',
                 originalEnqueuedTime: '2024-01-02T03:04:05.000Z',
-                originalDeliveryCount: 2,
+                originalDeliveryCount: 3,
                 originalSequenceNumber: '42'
             }
         });

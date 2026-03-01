@@ -41,7 +41,7 @@ export class AzureMessageOperations implements MessageOperations {
             applicationProperties: {
                 ...messageData.properties,
                 originalEnqueuedTime: messageData.enqueuedTime,
-                originalDeliveryCount: messageData.deliveryCount,
+                originalDeliveryCount: messageData.deliveryCount + 1,
                 originalSequenceNumber: messageData.sequenceNumber
             }
         };

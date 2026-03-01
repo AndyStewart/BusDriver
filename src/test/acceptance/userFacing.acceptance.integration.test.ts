@@ -90,6 +90,31 @@ suite('Acceptance: User-facing features', () => {
             .whenMoveMessages('source', 'target', ['move-001'])
             .thenQueueDoesNotContain('source', ['move-001'])
             .thenQueueContains('target', ['move-001'])
+            .thenQueueMessagesHaveDeliveryCount('target', { 'move-001': 1 })
+            .run();
+    });
+
+    test('user can move multiple messages between queues with a single delivery count increment', async () => {
+        await specScenario('Move multiple messages to another queue')
+            .givenConnection('acceptance-move-multiple', connectionString!)
+            .givenQueues(['source', 'target'])
+            .givenMessages('source', [
+                {
+                    messageId: 'move-multiple-001',
+                    body: { type: 'move' }
+                },
+                {
+                    messageId: 'move-multiple-002',
+                    body: { type: 'move' }
+                }
+            ])
+            .whenMoveMessages('source', 'target', ['move-multiple-001', 'move-multiple-002'])
+            .thenQueueDoesNotContain('source', ['move-multiple-001', 'move-multiple-002'])
+            .thenQueueContains('target', ['move-multiple-001', 'move-multiple-002'])
+            .thenQueueMessagesHaveDeliveryCount('target', {
+                'move-multiple-001': 1,
+                'move-multiple-002': 1
+            })
             .run();
     });
 

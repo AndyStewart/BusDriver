@@ -40,6 +40,11 @@ interface ScenarioContext {
     createdQueues: string[];
 }
 
+interface PeekedQueueMessage {
+    messageId: string;
+    deliveryCount: number;
+}
+
 type Step = (context: ScenarioContext) => Promise<void>;
 
 export class AcceptanceScenarioBuilder {
@@ -355,6 +360,28 @@ export class AcceptanceScenarioBuilder {
         return this;
     }
 
+    thenQueueMessagesHaveDeliveryCount(
+        queueAlias: string,
+        expectedDeliveryCountByMessageId: Record<string, number>
+    ): AcceptanceScenarioBuilder {
+        this.steps.push(async (context) => {
+            const queueName = this.resolveQueueName(context, queueAlias);
+            const actualMessages = await this.peekQueueMessages(context, queueName);
+
+            for (const [messageId, expectedDeliveryCount] of Object.entries(expectedDeliveryCountByMessageId)) {
+                const actual = actualMessages.find(message => message.messageId === messageId);
+                assert.ok(actual, `Expected queue '${queueName}' to contain message '${messageId}'`);
+                assert.strictEqual(
+                    actual.deliveryCount,
+                    expectedDeliveryCount,
+                    `Expected message '${messageId}' in queue '${queueName}' to have delivery count ${expectedDeliveryCount}`
+                );
+            }
+        });
+
+        return this;
+    }
+
     async run(): Promise<void> {
         const context: ScenarioContext = {
             title: this.title,
@@ -495,6 +522,26 @@ export class AcceptanceScenarioBuilder {
         }
     }
 
+    private async peekQueueMessages(context: ScenarioContext, queueName: string): Promise<PeekedQueueMessage[]> {
+        assert.ok(context.connectionString, 'Connection string required');
+        const client = new ServiceBusClient(context.connectionString);
+        const receiver = client.createReceiver(queueName);
+
+        try {
+            const messages = await receiver.peekMessages(200);
+            return messages
+                .filter(message => typeof message.messageId === 'string')
+                .map((message) => ({
+                    messageId: message.messageId?.toString() ?? '',
+                    deliveryCount: resolveEffectiveDeliveryCount(message)
+                }))
+                .filter(message => message.messageId.length > 0);
+        } finally {
+            await receiver.close();
+            await client.close();
+        }
+    }
+
     private async cleanupQueues(context: ScenarioContext): Promise<void> {
         if (!context.connectionString) {
             return;
@@ -548,6 +595,18 @@ export class AcceptanceScenarioBuilder {
             cleanupErrors.push(`${description}: ${formatErrorMessage(error)}`);
         }
     }
+}
+
+function resolveEffectiveDeliveryCount(message: {
+    deliveryCount?: number;
+    applicationProperties?: Record<string, unknown>;
+}): number {
+    const originalDeliveryCount = message.applicationProperties?.originalDeliveryCount;
+    if (typeof originalDeliveryCount === 'number') {
+        return originalDeliveryCount;
+    }
+
+    return message.deliveryCount ?? 0;
 }
 
 function normalizeMessageBody(value: unknown): string {
