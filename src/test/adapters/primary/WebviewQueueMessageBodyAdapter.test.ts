@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import type { QueueMessage } from '../../../features/queueMessages/MessageOperationsTypes';
+import type { QueueMessage } from '../../../features/queueMessageContracts/MessageOperationsTypes';
 import { formatMessageBody } from '../../../adapters/primary/WebviewQueueMessageBodyAdapter';
 
 describe('formatMessageBody', () => {

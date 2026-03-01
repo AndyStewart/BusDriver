@@ -1,5 +1,5 @@
 import type { MessageOperations } from '../../ports/secondary/MessageOperations';
-import type { MessageOperationResult, MessageWithSource } from './MessageTypes';
+import type { MessageOperationResult, MessageWithSource } from '../queueMessageContracts/MessageTypes';
 import { MessageSender } from './MessageSender';
 
 export class MessageMover {

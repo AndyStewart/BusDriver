@@ -1,4 +1,4 @@
-import type { MessageSource, MessageWithSource } from '../../features/queueMessages/MessageTypes';
+import type { MessageSource, MessageWithSource } from '../../features/queueMessageContracts/MessageTypes';
 import type { DroppedMessage } from './TreeDropMessageParserAdapter';
 import type { QueueMessage as QueueMessageData } from './WebviewQueueMessagesPanelAdapter';
 

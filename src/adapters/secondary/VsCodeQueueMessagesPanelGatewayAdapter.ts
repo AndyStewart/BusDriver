@@ -1,7 +1,7 @@
 import type * as vscode from 'vscode';
 import type { LoadQueueMessages } from '../../ports/primary/LoadQueueMessages';
 import type { QueueMessagesPanelGateway } from '../../ports/secondary/QueueMessagesPanelGateway';
-import type { QueueReference } from '../../features/queueMessages/OpenQueueMessagesTypes';
+import type { QueueReference } from '../../features/openQueueMessages/OpenQueueMessagesTypes';
 import { QueueMessagesPanel } from '../primary/WebviewQueueMessagesPanelAdapter';
 
 export class VsCodeQueueMessagesPanelGateway implements QueueMessagesPanelGateway {

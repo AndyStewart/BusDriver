@@ -1,4 +1,4 @@
-import type { MessageOperationResult } from '../../features/queueMessages/MessageTypes';
+import type { MessageOperationResult } from '../../features/queueMessageContracts/MessageTypes';
 
 export interface OperationSummary {
     level: 'info' | 'warning' | 'error';

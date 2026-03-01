@@ -1,4 +1,4 @@
-import type { QueueMessage as PortQueueMessage } from '../../features/queueMessages/MessageOperationsTypes';
+import type { QueueMessage as PortQueueMessage } from '../../features/queueMessageContracts/MessageOperationsTypes';
 
 export interface MessageBodyPayload {
     displayBody: string;

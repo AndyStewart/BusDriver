@@ -1,7 +1,7 @@
 import type { MoveMessages } from '../../ports/primary/MoveMessages';
 import type { MoveMessagesRequest } from './MoveMessagesTypes';
 import { MessageMover } from './MessageMover';
-import type { MessageOperationResult, MessageWithSource } from './MessageTypes';
+import type { MessageOperationResult, MessageWithSource } from '../queueMessageContracts/MessageTypes';
 
 export class MoveMessagesUseCase implements MoveMessages {
     constructor(private readonly messageMover: MessageMover) {}

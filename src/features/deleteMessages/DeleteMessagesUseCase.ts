@@ -1,5 +1,5 @@
 import { MessageDeleter } from './MessageDeleter';
-import type { MessageOperationResult, MessageWithSource } from './MessageTypes';
+import type { MessageOperationResult, MessageWithSource } from '../queueMessageContracts/MessageTypes';
 import type { DeleteMessages } from '../../ports/primary/DeleteMessages';
 import type { DeleteMessagesRequest } from './DeleteMessagesTypes';
 

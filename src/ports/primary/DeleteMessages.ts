@@ -1,8 +1,8 @@
 import type {
     MessageOperationResult,
     MessageWithSource
-} from '../../features/queueMessages/MessageOperationTypes';
-import type { DeleteMessagesRequest } from '../../features/queueMessages/DeleteMessagesTypes';
+} from '../../features/queueMessageContracts/MessageOperationTypes';
+import type { DeleteMessagesRequest } from '../../features/deleteMessages/DeleteMessagesTypes';
 
 export interface DeleteMessages {
     delete(request: DeleteMessagesRequest): Promise<MessageOperationResult<MessageWithSource>>;

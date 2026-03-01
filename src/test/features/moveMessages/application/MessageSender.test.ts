@@ -1,6 +1,6 @@
 import * as assert from 'assert';
-import { MessageSender } from '../../../../features/queueMessages/MessageSender';
-import type { QueueMessage } from '../../../../features/queueMessages/MessageOperationsTypes';
+import { MessageSender } from '../../../../features/moveMessages/MessageSender';
+import type { QueueMessage } from '../../../../features/queueMessageContracts/MessageOperationsTypes';
 import { FakeMessageOperations } from '../../common/fakes/FakeMessageOperations';
 
 describe('MessageSender', () => {

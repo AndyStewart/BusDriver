@@ -2,7 +2,7 @@ import type {
     LoadMoreQueueMessagesRequest,
     LoadQueueMessagesRequest,
     QueueMessagesPage
-} from '../../features/queueMessages/LoadQueueMessagesTypes';
+} from '../../features/listMessages/LoadQueueMessagesTypes';
 
 export interface LoadQueueMessages {
     loadInitial(request: LoadQueueMessagesRequest): Promise<QueueMessagesPage>;

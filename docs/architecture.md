@@ -9,7 +9,13 @@ The project follows a ports-and-adapters (hexagonal) architecture:
 - **Feature core modules (`src/features/*`)**:
   - `src/features/connections/**`: connection service and connection-focused core contracts.
   - `src/features/queues/**`: queue registry service and queue listing contracts.
-  - `src/features/queueMessages/**`: queue-message load/move/delete/purge/open use-cases and core contracts.
+  - `src/features/listMessages/**`: queue-message list/load use-cases and request/response types.
+  - `src/features/moveMessages/**`: queue-message move orchestration and sender/mover services.
+  - `src/features/deleteMessages/**`: queue-message delete orchestration and deleter services.
+  - `src/features/purgeMessages/**`: queue-message purge use-case and request types.
+  - `src/features/openQueueMessages/**`: queue-message panel open use-case and queue reference types.
+  - `src/features/messageGrid/**`: queue-message grid column configuration and view-model building logic.
+  - `src/features/queueMessageContracts/**`: shared queue-message operation contracts used across queue-message capabilities.
   - `src/features/common/**`: cross-feature core types (for example, `Connection`, `Queue`).
 - **Top-level ports (`src/ports/*`)**:
   - `src/ports/primary/**`: inbound capability interfaces consumed by commands/UI flows.
@@ -20,7 +26,7 @@ The project follows a ports-and-adapters (hexagonal) architecture:
 - **Composition root (`src/extension.ts`)**: dependency wiring and VS Code command registration.
 
 Notable current use-case boundaries:
-- Queue panel message loading and pagination are handled by feature-local use cases (for example, `src/features/queueMessages/LoadQueueMessagesUseCase.ts`) behind primary ports, with UI adapters acting as transport/lifecycle boundaries.
+- Queue panel message loading and pagination are handled by feature-local use cases (for example, `src/features/listMessages/LoadQueueMessagesUseCase.ts`) behind primary ports, with UI adapters acting as transport/lifecycle boundaries.
 
 ## Runtime Composition
 `src/extension.ts` is the composition root:

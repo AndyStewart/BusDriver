@@ -1,7 +1,7 @@
 import * as assert from 'assert';
-import { MessageMover } from '../../../../features/queueMessages/MessageMover';
-import { MessageSender } from '../../../../features/queueMessages/MessageSender';
-import type { MessageWithSource } from '../../../../features/queueMessages/MessageTypes';
+import { MessageMover } from '../../../../features/moveMessages/MessageMover';
+import { MessageSender } from '../../../../features/moveMessages/MessageSender';
+import type { MessageWithSource } from '../../../../features/queueMessageContracts/MessageTypes';
 import { FakeMessageOperations } from '../../common/fakes/FakeMessageOperations';
 
 describe('MessageMover', () => {

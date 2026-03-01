@@ -8,8 +8,8 @@ import type {
     QueueMessageView
 } from './LoadQueueMessagesTypes';
 import type { MessageOperations } from '../../ports/secondary/MessageOperations';
-import type { QueueMessage } from './MessageOperationsTypes';
-import type { MessageGridMessage, MessageGridColumnsService } from './MessageGridColumnsService';
+import type { QueueMessage } from '../queueMessageContracts/MessageOperationsTypes';
+import type { MessageGridMessage, MessageGridColumnsService } from '../messageGrid/MessageGridColumnsService';
 
 export class LoadQueueMessagesUseCase implements LoadQueueMessages {
     constructor(

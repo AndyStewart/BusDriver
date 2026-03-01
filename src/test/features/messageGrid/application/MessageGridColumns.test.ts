@@ -4,7 +4,7 @@ import {
     buildPropertyRowCells,
     formatPropertyCellValue,
     normalizePropertyColumns
-} from '../../../../features/queueMessages/messageGridColumns';
+} from '../../../../features/messageGrid/messageGridColumns';
 
 describe('Message grid column helpers', () => {
     it('normalizePropertyColumns trims and filters empty entries', () => {

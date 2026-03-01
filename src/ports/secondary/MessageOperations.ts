@@ -3,7 +3,7 @@ import type {
     DeleteMessagesResult,
     PeekMessagesOptions,
     QueueMessage
-} from '../../features/queueMessages/MessageOperationsTypes';
+} from '../../features/queueMessageContracts/MessageOperationsTypes';
 
 export interface MessageOperations {
     sendMessage(queueName: string, connectionString: string, message: QueueMessage): Promise<void>;

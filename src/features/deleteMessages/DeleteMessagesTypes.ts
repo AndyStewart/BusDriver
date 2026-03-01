@@ -1,4 +1,4 @@
-import type { MessageWithSource } from './MessageOperationTypes';
+import type { MessageWithSource } from '../queueMessageContracts/MessageOperationTypes';
 
 export interface DeleteMessagesRequest {
     messages: MessageWithSource[];

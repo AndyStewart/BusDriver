@@ -9,7 +9,7 @@ import type {
     DeleteMessagesResult,
     PeekMessagesOptions as PortPeekMessagesOptions,
     QueueMessage
-} from '../../features/queueMessages/MessageOperationsTypes';
+} from '../../features/queueMessageContracts/MessageOperationsTypes';
 import { AzureClientFactory } from './AzureClientFactory';
 export type {
     ReceivedMessageLike,
