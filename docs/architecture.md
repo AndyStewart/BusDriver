@@ -12,7 +12,7 @@ The project follows a ports-and-adapters (hexagonal) architecture:
   - `src/features/queueMessages/**`: queue-message load/move/delete/purge behavior and panel UI.
 - **Shared cross-feature code (`src/shared/*`)**:
   - `src/shared/adapters/**`: shared adapter implementations (for example, logging, telemetry, Azure client pooling).
-  - `src/shared/ports/**`: shared outbound contracts.
+  - `src/shared/ports/**`: shared outbound contracts and cross-feature contracts (for example, shared connection lookup/types).
 - **Composition root (`src/extension.ts`)**: dependency wiring and VS Code command registration.
 
 Notable current use-case boundaries:
@@ -27,6 +27,11 @@ Notable current use-case boundaries:
 4. Register commands and tree view interactions.
 
 This keeps domain logic testable and independent from VS Code/Azure details.
+
+## Dependency Guardrails
+- Feature-to-feature imports are disallowed by lint policy. Shared contracts must be extracted to `src/shared/**`.
+- `application` and `ports` layers are SDK/framework-agnostic and must not import VS Code/Azure SDKs or adapter implementations.
+- Existing legacy cross-feature adapter coupling is being migrated in phases with explicit lint carve-outs.
 
 ## Data and Control Flow
 Typical flow for a user action (for example, moving a message):

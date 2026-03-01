@@ -1,4 +1,4 @@
-import type { Connection } from '../../connections/application/Connection';
+import type { Connection } from '../../../shared/ports/Connection';
 
 export interface QueueInfo {
     name: string;

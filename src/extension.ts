@@ -80,7 +80,13 @@ export function activate(context: vscode.ExtensionContext) {
         context.extensionUri,
         loadQueueMessages
     );
-    const openQueueMessages = new OpenQueueMessagesUseCase(connectionService, queueMessagesPanelGateway);
+    const openQueueMessages = new OpenQueueMessagesUseCase(
+        {
+            getAll: () => connectionService.listConnections(),
+            getById: (id: string) => connectionService.getConnectionById(id)
+        },
+        queueMessagesPanelGateway
+    );
 
     const acceptanceAwareUi: ConnectionsProviderUi = {
         showInputBox: async (options) => {

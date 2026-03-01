@@ -1,5 +1,5 @@
-import type { Connection } from '../../connections/application/Connection';
-import type { ConnectionRepository } from '../../connections/ports/ConnectionRepository';
+import type { Connection } from '../../../shared/ports/Connection';
+import type { ConnectionLookup } from '../../../shared/ports/ConnectionLookup';
 import type { QueueInfo, QueueRegistry } from '../ports/QueueRegistry';
 
 export interface QueueWithConnection {
@@ -10,7 +10,7 @@ export interface QueueWithConnection {
 export class QueueRegistryService {
     constructor(
         private readonly queueRegistry: QueueRegistry,
-        private readonly connectionRepository: ConnectionRepository
+        private readonly connectionLookup: ConnectionLookup
     ) {}
 
     async listQueuesForConnection(connection: Connection): Promise<QueueInfo[]> {
@@ -22,7 +22,7 @@ export class QueueRegistryService {
     }
 
     async listAllQueues(): Promise<QueueWithConnection[]> {
-        const connections = await this.connectionRepository.getAll();
+        const connections = await this.connectionLookup.getAll();
         const allQueues: QueueWithConnection[] = [];
 
         for (const connection of connections) {

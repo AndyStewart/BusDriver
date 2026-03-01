@@ -4,13 +4,13 @@ import { ListQueuesUseCase } from '../../../../features/queues/application/ListQ
 import { MoveMessagesUseCase } from '../../../../features/queueMessages/application/MoveMessagesUseCase';
 import { OpenQueueMessagesUseCase } from '../../../../features/queueMessages/application/OpenQueueMessagesUseCase';
 import { PurgeQueueUseCase } from '../../../../features/queueMessages/application/PurgeQueueUseCase';
-import { ConnectionService } from '../../../../features/connections/application/ConnectionService';
 import { MessageDeleter } from '../../../../features/queueMessages/application/MessageDeleter';
 import type { MessageOperationResult, MessageWithSource } from '../../../../features/queueMessages/application/MessageTypes';
 import { MessageMover } from '../../../../features/queueMessages/application/MessageMover';
 import { QueueRegistryService } from '../../../../features/queues/application/QueueRegistryService';
 import type { QueueMessagesPanelGateway } from '../../../../features/queueMessages/ports/QueueMessagesPanelGateway';
 import type { MessageOperations } from '../../../../features/queueMessages/ports/MessageOperations';
+import type { ConnectionLookup } from '../../../../shared/ports/ConnectionLookup';
 
 describe('Application use cases', () => {
     it('MoveMessagesUseCase delegates to MessageMover', async () => {
@@ -101,9 +101,7 @@ describe('Application use cases', () => {
                 },
                 async getById() {
                     return undefined;
-                },
-                async save() {},
-                async remove() {}
+                }
             }
         );
 
@@ -124,8 +122,11 @@ describe('Application use cases', () => {
 
     it('OpenQueueMessagesUseCase resolves connection string and opens panel', async () => {
         const panelGateway = new FakeQueueMessagesPanelGateway();
-        const connectionService = {
-            async getConnectionById() {
+        const connectionLookup: ConnectionLookup = {
+            async getAll() {
+                return [];
+            },
+            async getById() {
                 return {
                     id: 'conn-a',
                     name: 'Connection A',
@@ -133,9 +134,9 @@ describe('Application use cases', () => {
                     createdAt: new Date('2026-02-16T00:00:00Z')
                 };
             }
-        } as unknown as ConnectionService;
+        };
 
-        const useCase = new OpenQueueMessagesUseCase(connectionService, panelGateway);
+        const useCase = new OpenQueueMessagesUseCase(connectionLookup, panelGateway);
 
         await useCase.open({
             name: 'queue-a',
@@ -153,13 +154,16 @@ describe('Application use cases', () => {
 
     it('OpenQueueMessagesUseCase throws when connection string is missing', async () => {
         const panelGateway = new FakeQueueMessagesPanelGateway();
-        const connectionService = {
-            async getConnectionById() {
+        const connectionLookup: ConnectionLookup = {
+            async getAll() {
+                return [];
+            },
+            async getById() {
                 return undefined;
             }
-        } as unknown as ConnectionService;
+        };
 
-        const useCase = new OpenQueueMessagesUseCase(connectionService, panelGateway);
+        const useCase = new OpenQueueMessagesUseCase(connectionLookup, panelGateway);
 
         await assert.rejects(
             () => useCase.open({ name: 'queue-a', connectionId: 'conn-a' }),

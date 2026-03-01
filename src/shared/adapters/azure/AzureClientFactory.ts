@@ -4,7 +4,7 @@ import type {
     ServiceBusClientFactory,
     ServiceBusClientLike,
     ServiceBusReceiverOptions
-} from '../../../features/queueMessages/adapters/AzureMessageOperationsAdapter';
+} from './ServiceBusTypes';
 
 interface ClientEntry {
     client: ServiceBusClientLike;

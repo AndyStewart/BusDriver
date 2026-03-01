@@ -1,4 +1,4 @@
-import type { MessageOperationResult, MessageWithSource } from '../application/MessageTypes';
+import type { MessageOperationResult, MessageWithSource } from './MessageOperationTypes';
 
 export interface MoveMessagesRequest {
     targetQueueName: string;

@@ -1,6 +1,1 @@
-export interface Connection {
-    id: string;
-    name: string;
-    connectionString: string;
-    createdAt: Date;
-}
+export type { Connection } from '../../../shared/ports/Connection';

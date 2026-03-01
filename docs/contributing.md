@@ -58,6 +58,13 @@ Before opening or merging a PR, all of the following must pass:
 Lint policy note:
 - Type-aware TypeScript ESLint rules are enforced as errors in this repository; warning-free lint output is expected.
 - Core JavaScript/TypeScript safety and style rules are also enforced as errors; lint output should contain no warnings.
+- Architecture boundary rules are enforced in ESLint:
+  - no feature-to-feature imports in `application` and `ports` layers
+  - `application` and `ports` must not depend on VS Code/Azure SDKs or adapter implementations
+  - adapter-level cross-feature restrictions are staged with explicit temporary carve-outs during migration
+- Safety guardrails are lint-enforced:
+  - console usage is restricted to explicit boundary files (logger/composition/test paths)
+  - webview inline script payloads must use safe serialization helpers
 
 Suggested local sequence:
 ```bash

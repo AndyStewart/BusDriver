@@ -1,6 +1,6 @@
-import type { PeekMessagesOptions as AzurePeekMessagesOptions } from '@azure/service-bus';
 import { ServiceBusClient } from '@azure/service-bus';
 import Long from 'long';
+import type { ServiceBusClientFactory } from '../../../shared/adapters/azure/ServiceBusTypes';
 import type {
     DeleteMessagesOptions,
     DeleteMessagesResult,
@@ -9,43 +9,17 @@ import type {
     QueueMessage
 } from '../ports/MessageOperations';
 import { AzureClientFactory } from '../../../shared/adapters/azure/AzureClientFactory';
+export type {
+    ReceivedMessageLike,
+    ServiceBusClientFactory,
+    ServiceBusClientLike,
+    ServiceBusReceiverOptions,
+    SenderLike,
+    ReceiverLike
+} from '../../../shared/adapters/azure/ServiceBusTypes';
 
 const DEFAULT_DELETE_MAX_WAIT_TIME_MS = 500;
 const DEFAULT_DELETE_BATCH_SIZE = 100;
-
-export interface SenderLike {
-    sendMessages(message: unknown): Promise<void>;
-    close(): Promise<void>;
-}
-
-export interface ReceiverLike {
-    receiveMessages(maxMessages: number, options: { maxWaitTimeInMs: number }): Promise<ReceivedMessageLike[]>;
-    completeMessage(message: ReceivedMessageLike): Promise<void>;
-    abandonMessage(message: ReceivedMessageLike): Promise<void>;
-    peekMessages(maxMessages: number, options?: AzurePeekMessagesOptions): Promise<ReceivedMessageLike[]>;
-    close(): Promise<void>;
-}
-
-export interface ReceivedMessageLike {
-    sequenceNumber?: number | string | { toString(): string };
-    messageId?: string | { toString(): string };
-    body?: unknown;
-    applicationProperties?: Record<string, unknown>;
-    enqueuedTimeUtc?: Date;
-    deliveryCount?: number;
-}
-
-export interface ServiceBusClientLike {
-    createSender(queueName: string): SenderLike;
-    createReceiver(queueName: string, options?: ServiceBusReceiverOptions): ReceiverLike;
-    close(): Promise<void>;
-}
-
-export interface ServiceBusReceiverOptions {
-    receiveMode?: 'peekLock' | 'receiveAndDelete';
-}
-
-export type ServiceBusClientFactory = (connectionString: string) => ServiceBusClientLike;
 
 export class AzureMessageOperations implements MessageOperations {
     private readonly clientPool: AzureClientFactory;
