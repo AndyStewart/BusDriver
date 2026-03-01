@@ -48,6 +48,16 @@ suite('Acceptance: User-facing features', () => {
             .run();
     });
 
+    test('user can close the queue messages view', async () => {
+        await specScenario('Close queue messages view')
+            .givenConnection('acceptance-open-close', connectionString!)
+            .givenQueues(['orders'])
+            .whenOpenQueueMessages('orders')
+            .whenCloseQueueMessagesPanel()
+            .thenNoQueuePanelOpen()
+            .run();
+    });
+
     test('user can add, refresh, and remove a connection', async () => {
         const connectionName = `acceptance-add-delete-${Date.now()}`;
 

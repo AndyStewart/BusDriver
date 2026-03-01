@@ -251,6 +251,14 @@ export class AcceptanceScenarioBuilder {
         return this;
     }
 
+    whenCloseQueueMessagesPanel(): AcceptanceScenarioBuilder {
+        this.steps.push(async () => {
+            await vscode.commands.executeCommand('busdriver.__test.closeQueuePanel');
+        });
+
+        return this;
+    }
+
     whenMoveMessages(sourceAlias: string, targetAlias: string, messageIds: string[]): AcceptanceScenarioBuilder {
         this.steps.push(async (context) => {
             assert.ok(context.connectionString, 'Connection string must exist before moving messages');

@@ -8,20 +8,6 @@ suite('QueueMessagesPanel integration', () => {
         QueueMessagesPanel.currentPanel?.dispose();
     });
 
-    test('dispose clears currentPanel', async () => {
-        const loadQueueMessages = new FakeLoadQueueMessages();
-
-        await QueueMessagesPanel.createOrShow(
-            extensionUri(),
-            { name: 'queue-a', connectionId: 'conn-a' },
-            'Endpoint=sb://conn-a',
-            loadQueueMessages
-        );
-
-        QueueMessagesPanel.currentPanel?.dispose();
-        assert.strictEqual(QueueMessagesPanel.currentPanel, undefined);
-    });
-
     test('webview html links external queue messages assets', async () => {
         const loadQueueMessages = new FakeLoadQueueMessages();
 
