@@ -1,9 +1,11 @@
 import type {
-    DeleteMessagesResult,
     MessageOperations,
+} from '../../../features/queueMessages/ports/MessageOperations';
+import type {
+    DeleteMessagesResult,
     PeekMessagesOptions,
     QueueMessage
-} from '../../../features/queueMessages/ports/MessageOperations';
+} from '../../../features/queueMessages/application/MessageOperationsTypes';
 
 export class FakeMessageOperations implements MessageOperations {
     sent: Array<{ queueName: string; connectionString: string; message: QueueMessage }> = [];

@@ -1,11 +1,14 @@
 import type {
-    LoadMoreQueueMessagesRequest,
     LoadQueueMessages,
+} from '../ports/LoadQueueMessages';
+import type {
+    LoadMoreQueueMessagesRequest,
     LoadQueueMessagesRequest,
     QueueMessagesPage,
     QueueMessageView
-} from '../ports/LoadQueueMessages';
-import type { MessageOperations, QueueMessage } from '../ports/MessageOperations';
+} from './LoadQueueMessagesTypes';
+import type { MessageOperations } from '../ports/MessageOperations';
+import type { QueueMessage } from './MessageOperationsTypes';
 import type { MessageGridMessage, MessageGridColumnsService } from './MessageGridColumnsService';
 
 export class LoadQueueMessagesUseCase implements LoadQueueMessages {

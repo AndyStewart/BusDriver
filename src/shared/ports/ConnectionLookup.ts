@@ -1,4 +1,4 @@
-import type { Connection } from './Connection';
+import type { Connection } from '../application/Connection';
 
 export interface ConnectionLookup {
     getAll(): Promise<Connection[]>;

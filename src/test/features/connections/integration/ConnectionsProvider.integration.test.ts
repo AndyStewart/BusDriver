@@ -10,7 +10,8 @@ import { QueueRegistryService } from '../../../../features/queues/application/Qu
 import type { ConnectionRepository } from '../../../../features/connections/ports/ConnectionRepository';
 import { QueueTreeItem } from '../../../../shared/adapters/vscode/QueueTreeItemAdapter';
 import type { Logger } from '../../../../shared/ports/Logger';
-import type { MessageOperations, QueueMessage } from '../../../../features/queueMessages/ports/MessageOperations';
+import type { MessageOperations } from '../../../../features/queueMessages/ports/MessageOperations';
+import type { QueueMessage } from '../../../../features/queueMessages/application/MessageOperationsTypes';
 import type { QueueRegistry } from '../../../../features/queues/ports/QueueRegistry';
 import type { Telemetry } from '../../../../shared/ports/Telemetry';
 import { ConnectionsProvider, type QueueRegistryPort } from '../../../../features/connections/adapters/TreeConnectionsAdapter';

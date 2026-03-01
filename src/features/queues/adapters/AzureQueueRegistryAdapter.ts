@@ -1,6 +1,7 @@
 import { ServiceBusAdministrationClient } from '@azure/service-bus';
-import type { Connection } from '../../../shared/ports/Connection';
-import type { QueueInfo, QueueRegistry } from '../ports/QueueRegistry';
+import type { Connection } from '../../../shared/application/Connection';
+import type { QueueRegistry } from '../ports/QueueRegistry';
+import type { QueueInfo } from '../application/QueueRegistryTypes';
 
 export interface AdminQueueClient {
     listQueues(): AsyncIterable<{ name: string }>;

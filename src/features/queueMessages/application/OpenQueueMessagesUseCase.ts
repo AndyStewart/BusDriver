@@ -1,6 +1,7 @@
 import type { ConnectionLookup } from '../../../shared/ports/ConnectionLookup';
-import type { OpenQueueMessages, QueueReference } from '../ports/OpenQueueMessages';
+import type { OpenQueueMessages } from '../ports/OpenQueueMessages';
 import type { QueueMessagesPanelGateway } from '../ports/QueueMessagesPanelGateway';
+import type { QueueReference } from './OpenQueueMessagesTypes';
 
 export class OpenQueueMessagesUseCase implements OpenQueueMessages {
     constructor(

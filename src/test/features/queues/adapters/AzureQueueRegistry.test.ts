@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { AzureQueueRegistry, AdminQueueClient } from '../../../../features/queues/adapters/AzureQueueRegistryAdapter';
-import type { Connection } from '../../../../shared/ports/Connection';
+import type { Connection } from '../../../../shared/application/Connection';
 
 const createAsyncIterator = (names: string[]): AsyncIterable<{ name: string }> => {
     async function* iterator() {

@@ -1,6 +1,7 @@
-import type { Connection } from '../../../shared/ports/Connection';
+import type { Connection } from '../../../shared/application/Connection';
 import type { ConnectionLookup } from '../../../shared/ports/ConnectionLookup';
-import type { QueueInfo, QueueRegistry } from '../ports/QueueRegistry';
+import type { QueueRegistry } from '../ports/QueueRegistry';
+import type { QueueInfo } from './QueueRegistryTypes';
 
 export interface QueueWithConnection {
     queue: QueueInfo;

@@ -12,7 +12,8 @@ The project follows a ports-and-adapters (hexagonal) architecture:
   - `src/features/queueMessages/**`: queue-message load/move/delete/purge behavior and panel UI.
 - **Shared cross-feature code (`src/shared/*`)**:
   - `src/shared/adapters/**`: shared adapter implementations (for example, logging, telemetry, Azure client pooling).
-  - `src/shared/ports/**`: shared outbound contracts and cross-feature contracts (for example, shared connection lookup/types).
+  - `src/shared/ports/**`: shared outbound method contracts.
+  - `src/shared/application/**`: shared cross-feature data contracts.
 - **Composition root (`src/extension.ts`)**: dependency wiring and VS Code command registration.
 
 Notable current use-case boundaries:
@@ -33,6 +34,7 @@ This keeps domain logic testable and independent from VS Code/Azure details.
 - `application` and `ports` layers are SDK/framework-agnostic and must not import VS Code/Azure SDKs or adapter implementations.
 - `adapters` layers are also protected from cross-feature imports; cross-feature collaboration must go through shared contracts or composition-root wiring.
 - Feature ports are interface-only contracts; type aliases and type re-exports are disallowed.
+- Feature port interface method custom parameter/return types must originate from the feature `application` layer.
 
 ## Data and Control Flow
 Typical flow for a user action (for example, moving a message):

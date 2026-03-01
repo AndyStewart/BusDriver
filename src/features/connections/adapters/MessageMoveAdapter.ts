@@ -1,4 +1,4 @@
-import type { Queue } from '../../../shared/ports/Queue';
+import type { Queue } from '../../../shared/application/Queue';
 
 export interface DroppedMessage {
     sequenceNumber: string;

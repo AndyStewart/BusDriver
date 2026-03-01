@@ -1,9 +1,8 @@
-import type { MessageOperationResult, MessageWithSource } from './MessageOperationTypes';
-
-export interface DeleteMessagesRequest {
-    messages: MessageWithSource[];
-    onProgress?: (processed: number, total: number) => void;
-}
+import type {
+    MessageOperationResult,
+    MessageWithSource
+} from '../application/MessageOperationTypes';
+import type { DeleteMessagesRequest } from '../application/DeleteMessagesTypes';
 
 export interface DeleteMessages {
     delete(request: DeleteMessagesRequest): Promise<MessageOperationResult<MessageWithSource>>;

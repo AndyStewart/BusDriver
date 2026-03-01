@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import { promises as fs } from 'fs';
-import type { Queue } from '../../../shared/ports/Queue';
-import type { LoadQueueMessages, QueueMessageView } from '../ports/LoadQueueMessages';
+import type { Queue } from '../../../shared/application/Queue';
+import type { LoadQueueMessages } from '../ports/LoadQueueMessages';
+import type { QueueMessageView } from '../application/LoadQueueMessagesTypes';
 import { withSourceContext } from './WebviewQueueMessageCommandAdapter';
 import {
     buildAppendMessagesCommand,

@@ -1,4 +1,5 @@
-import type { MessageOperations, QueueMessage } from '../ports/MessageOperations';
+import type { MessageOperations } from '../ports/MessageOperations';
+import type { QueueMessage } from './MessageOperationsTypes';
 
 export class MessageSender {
     constructor(private readonly messageOperations: MessageOperations) {}

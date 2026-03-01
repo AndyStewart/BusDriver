@@ -1,4 +1,4 @@
-import type { Connection } from '../../../shared/ports/Connection';
+import type { Connection } from '../../../shared/application/Connection';
 
 export type QueueRegistryConnection = Connection;
 

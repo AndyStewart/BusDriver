@@ -1,5 +1,5 @@
 import type { ConnectionRepository } from '../../../features/connections/ports/ConnectionRepository';
-import type { Connection } from '../../../shared/ports/Connection';
+import type { Connection } from '../../../shared/application/Connection';
 
 export class InMemoryConnectionRepository implements ConnectionRepository {
     private connections: Connection[] = [];

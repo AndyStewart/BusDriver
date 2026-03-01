@@ -133,7 +133,7 @@ module.exports = {
                         ],
                         patterns: [
                             {
-                                group: ['@azure/*', '../application/**', '../../*/application/**', '../adapters/**', '../../*/adapters/**', '../../../shared/adapters/**'],
+                                group: ['@azure/*', '../adapters/**', '../../*/adapters/**', '../../../shared/adapters/**'],
                                 message: 'Port contracts must not depend on application/adapters or SDK implementations.'
                             }
                         ]
@@ -142,7 +142,7 @@ module.exports = {
             }
         },
         {
-            files: ['src/features/**/ports/**/*.ts'],
+            files: ['src/features/**/ports/**/*.ts', 'src/shared/ports/**/*.ts'],
             rules: {
                 'port-interface-application-types': 'error'
             }

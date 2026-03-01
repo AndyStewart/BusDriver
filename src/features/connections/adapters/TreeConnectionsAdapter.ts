@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import type { Connection } from '../application/Connection';
 import { ConnectionService } from '../application/ConnectionService';
 import { ConnectionTreeItem } from './TreeConnectionItemAdapter';
-import type { Queue, QueueStats } from '../../../shared/ports/Queue';
+import type { Queue, QueueStats } from '../../../shared/application/Queue';
 import { QueueTreeItem } from '../../../shared/adapters/vscode/QueueTreeItemAdapter';
 import type { Logger } from '../../../shared/ports/Logger';
 import type { Telemetry } from '../../../shared/ports/Telemetry';

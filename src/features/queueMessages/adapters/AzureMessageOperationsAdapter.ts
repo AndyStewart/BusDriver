@@ -2,12 +2,14 @@ import { ServiceBusClient } from '@azure/service-bus';
 import Long from 'long';
 import type { ServiceBusClientFactory } from '../../../shared/adapters/azure/ServiceBusTypes';
 import type {
+    MessageOperations,
+} from '../ports/MessageOperations';
+import type {
     DeleteMessagesOptions,
     DeleteMessagesResult,
-    MessageOperations,
     PeekMessagesOptions as PortPeekMessagesOptions,
     QueueMessage
-} from '../ports/MessageOperations';
+} from '../application/MessageOperationsTypes';
 import { AzureClientFactory } from '../../../shared/adapters/azure/AzureClientFactory';
 export type {
     ReceivedMessageLike,

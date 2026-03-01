@@ -1,5 +1,6 @@
 import { QueueRegistryService } from './QueueRegistryService';
-import type { ListQueues, QueueSelection } from '../ports/ListQueues';
+import type { ListQueues } from '../ports/ListQueues';
+import type { QueueSelection } from './ListQueuesTypes';
 
 export class ListQueuesUseCase implements ListQueues {
     constructor(private readonly queueRegistryService: QueueRegistryService) {}

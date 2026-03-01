@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { Queue, QueueStats } from '../../ports/Queue';
+import type { Queue, QueueStats } from '../../application/Queue';
 
 export class QueueTreeItem extends vscode.TreeItem {
     constructor(

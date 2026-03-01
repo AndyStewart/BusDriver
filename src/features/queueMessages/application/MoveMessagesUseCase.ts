@@ -1,4 +1,5 @@
-import type { MoveMessages, MoveMessagesRequest } from '../ports/MoveMessages';
+import type { MoveMessages } from '../ports/MoveMessages';
+import type { MoveMessagesRequest } from './MoveMessagesTypes';
 import { MessageMover } from './MessageMover';
 import type { MessageOperationResult, MessageWithSource } from './MessageTypes';
 

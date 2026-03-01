@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import { QueueRegistryService } from '../../../../features/queues/application/QueueRegistryService';
 import type { QueueRegistry } from '../../../../features/queues/ports/QueueRegistry';
-import type { Connection } from '../../../../shared/ports/Connection';
+import type { Connection } from '../../../../shared/application/Connection';
 import { InMemoryConnectionRepository } from '../../../shared/fakes/InMemoryConnectionRepository';
 
 describe('QueueRegistryService', () => {

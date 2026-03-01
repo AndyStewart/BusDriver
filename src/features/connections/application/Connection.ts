@@ -1,1 +1,1 @@
-export type { Connection } from '../../../shared/ports/Connection';
+export type { Connection } from '../../../shared/application/Connection';
