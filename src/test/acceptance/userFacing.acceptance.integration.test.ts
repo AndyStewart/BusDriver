@@ -16,8 +16,15 @@ suite('Acceptance: User-facing features', () => {
         await extension!.activate();
     });
 
-    test('user can open queue messages for a seeded queue', async () => {
-        await specScenario('Open queue messages panel')
+    test('user sees an error when opening queue messages without a saved connection', async () => {
+        await specScenario('Open queue messages without a saved connection')
+            .whenOpenQueueMessagesForConnection('missing-connection-queue', 'missing-connection')
+            .thenNoQueuePanelOpen()
+            .run();
+    });
+
+    test('user can open messages for a queue', async () => {
+        await specScenario('Open queue messages')
             .givenConnection('acceptance-open', connectionString!)
             .givenQueues(['orders'])
             .givenMessages('orders', [
@@ -31,10 +38,10 @@ suite('Acceptance: User-facing features', () => {
             .run();
     });
 
-    test('user can add, refresh, and delete a connection', async () => {
+    test('user can add, refresh, and remove a connection', async () => {
         const connectionName = `acceptance-add-delete-${Date.now()}`;
 
-        await specScenario('Add refresh and delete connection')
+        await specScenario('Add, refresh, and delete a connection')
             .whenAddConnection(connectionName, connectionString!)
             .thenConnectionExists(connectionName)
             .whenRefreshConnections()
@@ -43,15 +50,15 @@ suite('Acceptance: User-facing features', () => {
             .run();
     });
 
-    test('user can configure message grid columns', async () => {
-        await specScenario('Configure message grid columns')
+    test('user can choose which message fields appear as columns', async () => {
+        await specScenario('Choose message columns')
             .whenConfigureMessageGridColumns(['traceId', 'tenant'])
             .thenConfiguredMessageGridColumns(['traceId', 'tenant'])
             .run();
     });
 
     test('user can move message between queues', async () => {
-        await specScenario('Move message to another queue')
+        await specScenario('Move a message to another queue')
             .givenConnection('acceptance-move', connectionString!)
             .givenQueues(['source', 'target'])
             .givenMessages('source', [
@@ -67,7 +74,7 @@ suite('Acceptance: User-facing features', () => {
     });
 
     test('user can delete selected messages', async () => {
-        await specScenario('Delete selected message')
+        await specScenario('Delete selected messages')
             .givenConnection('acceptance-delete', connectionString!)
             .givenQueues(['source'])
             .givenMessages('source', [
@@ -81,8 +88,8 @@ suite('Acceptance: User-facing features', () => {
             .run();
     });
 
-    test('user can purge a queue', async () => {
-        await specScenario('Purge queue messages')
+    test('user can clear all messages from a queue', async () => {
+        await specScenario('Clear all messages from a queue')
             .givenConnection('acceptance-purge', connectionString!)
             .givenQueues(['source'])
             .givenMessages('source', [

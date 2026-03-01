@@ -1,0 +1,210 @@
+# Plan: acceptance-integration-rebalance
+
+- Date: 2026-03-01
+- Owner: Codex
+- Status: In Progress
+
+## Goal
+Rebalance test strategy by moving user-facing integration coverage into acceptance tests where practical, while keeping a minimal integration suite for coverage acceptance cannot reliably provide.
+
+## Background and Context
+Current integration coverage includes:
+- Extension activation/command-registration and defensive command paths.
+- Queue messages panel lifecycle and HTML contract checks.
+- Connections provider drag/drop behavior.
+
+Current acceptance coverage validates user-facing command flows against a real Azure Service Bus namespace, but uses `BUSDRIVER_ACCEPTANCE_MODE=1` and hidden `busdriver.__test.*` commands for deterministic setup and command overrides. That means some production-mode/runtime and internal adapter-path assertions are not currently exercised by acceptance.
+
+## Scope
+- In scope:
+- Add acceptance scenarios for user-facing coverage currently in integration tests where automation is feasible.
+- Keep and slim integration tests to paths acceptance cannot reliably or cleanly cover.
+- Update CI/test scripts if test responsibilities shift.
+- Update docs to reflect final test boundaries and responsibilities.
+- Out of scope:
+- Full replacement of test hooks with real UI automation for every VS Code prompt/modality.
+- Redesigning extension architecture unrelated to test scope rebalance.
+
+## Design Summary
+Use a layered approach:
+1. Expand acceptance scenarios for user-visible behavior and command-path smoke checks.
+2. Retain a thin integration layer for production-mode wiring and adapter-internal drag/drop behavior.
+3. Remove only redundant integration tests once equivalent acceptance coverage exists and is stable.
+
+This preserves confidence while reducing overlap and avoiding a brittle push toward difficult UI-level automation in `vscode-test`.
+
+## Vertical Slices (Top-Down)
+
+### Slice 1: Move `showQueueMessages` Missing-Connection Guard Test
+- Objective:
+- Move integration assertion from `extension.integration.test.ts` that queue panel is not opened when the connection string is missing.
+- Changes:
+- Add one acceptance scenario that executes `busdriver.showQueueMessages` with a queue bound to a missing connection ID and asserts no panel opens.
+- Keep existing integration test until new acceptance test is green.
+- Then remove only the matching integration test.
+- Independent deployability:
+- Yes
+- Independent testability:
+- Yes. Acceptance test and integration suite remain green.
+- Documentation updates required? (Yes/No):
+- No
+- Plan update required for this slice? (Yes/No):
+- Yes
+- Acceptance checks:
+- New acceptance test fails first, then passes.
+
+### Slice 2: Move `moveMessageToQueue` No-Target-Queues Guard Test
+- Objective:
+- Move integration assertion from `extension.integration.test.ts` that command exits safely when no target queues are available.
+- Changes:
+- Add one acceptance scenario that invokes `busdriver.moveMessageToQueue` with no queue catalog and verifies operation exits without mutation.
+- Keep existing integration test until new acceptance test is green.
+- Then remove only the matching integration test.
+- Independent deployability:
+- Yes
+- Independent testability:
+- Yes
+- Documentation updates required? (Yes/No):
+- No
+- Plan update required for this slice? (Yes/No):
+- Yes
+- Acceptance checks:
+- New acceptance test fails first, then passes.
+
+### Slice 3: Move Queue Panel `createOrShow` Creation Test
+- Objective:
+- Move integration assertion from `WebviewQueueMessagesPanel.integration.test.ts` that `createOrShow` creates and stores current panel.
+- Changes:
+- Add one acceptance scenario that opens queue messages and verifies open-panel state.
+- Keep existing integration test until acceptance equivalent is green.
+- Then remove only the matching integration test.
+- Independent deployability:
+- Yes
+- Independent testability:
+- Yes
+- Documentation updates required? (Yes/No):
+- No
+- Plan update required for this slice? (Yes/No):
+- Yes
+- Acceptance checks:
+- New acceptance test fails first, then passes.
+
+### Slice 4: Move Queue Panel Reuse/Context-Switch Test
+- Objective:
+- Move integration assertion from `WebviewQueueMessagesPanel.integration.test.ts` that opening a second queue reuses the panel and updates queue context.
+- Changes:
+- Add one acceptance scenario that opens queue A then queue B and verifies current panel queue is B without requiring manual close.
+- Keep existing integration test until acceptance equivalent is green.
+- Then remove only the matching integration test.
+- Independent deployability:
+- Yes
+- Independent testability:
+- Yes
+- Documentation updates required? (Yes/No):
+- No
+- Plan update required for this slice? (Yes/No):
+- Yes
+- Acceptance checks:
+- New acceptance test fails first, then passes.
+
+### Slice 5: Move Queue Panel Dispose/Clear Test
+- Objective:
+- Move integration assertion from `WebviewQueueMessagesPanel.integration.test.ts` that disposing the panel clears current panel state.
+- Changes:
+- Add one acceptance scenario that opens a panel, calls test close command, verifies no open panel.
+- Keep existing integration test until acceptance equivalent is green.
+- Then remove only the matching integration test.
+- Independent deployability:
+- Yes
+- Independent testability:
+- Yes
+- Documentation updates required? (Yes/No):
+- No
+- Plan update required for this slice? (Yes/No):
+- Yes
+- Acceptance checks:
+- New acceptance test fails first, then passes.
+
+### Slice 6: Move Queue Panel HTML Contract Test
+- Objective:
+- Move integration HTML assertions from `WebviewQueueMessagesPanel.integration.test.ts` into acceptance.
+- Changes:
+- Add one acceptance-only test probe (test command) to fetch rendered webview HTML safely.
+- Add one acceptance scenario asserting key HTML contract markers and forbidden inline script patterns.
+- Keep integration HTML test until acceptance equivalent is green.
+- Then remove only the matching integration test.
+- Independent deployability:
+- Yes
+- Independent testability:
+- Yes
+- Documentation updates required? (Yes/No):
+- Potentially Yes (if test-only probe contract is documented)
+- Plan update required for this slice? (Yes/No):
+- Yes
+- Acceptance checks:
+- New acceptance test fails first, then passes.
+
+### Slice 7: Keep Integration-Only Coverage (No Move)
+- Objective:
+- Explicitly retain tests that should not migrate to acceptance.
+- Changes:
+- Keep integration tests for:
+- Production-mode smoke in `extension.integration.test.ts`:
+- extension presence/activation
+- command registration
+- `purgeQueue` missing payload guard
+- `deactivate` idempotency
+- Keep all `ConnectionsProvider.integration.test.ts` drag/drop tests.
+- Remove any remaining migrated duplicates only.
+- Independent deployability:
+- Yes
+- Independent testability:
+- Yes
+- Documentation updates required? (Yes/No):
+- Yes (`docs/contributing.md` test-boundary clarification)
+- Plan update required for this slice? (Yes/No):
+- Yes
+- Acceptance checks:
+- Integration suite still covers non-portable behaviors.
+
+### Slice 8: CI and Docs Finalization
+- Objective:
+- Align CI/docs with final one-at-a-time migration outcomes.
+- Changes:
+- Update `docs/contributing.md` and `docs/architecture.md` testing sections to reflect exact ownership.
+- Archive this plan after closeout.
+- Independent deployability:
+- Yes
+- Independent testability:
+- Yes
+- Documentation updates required? (Yes/No):
+- Yes
+- Plan update required for this slice? (Yes/No):
+- Yes
+- Acceptance checks:
+- CI green with updated acceptance + slim integration suite.
+
+## Progress Log
+- 2026-03-01 00:00 - Created plan.
+- 2026-03-01 16:10 - Slice 1 implemented: added acceptance test for missing-connection `showQueueMessages` guard and removed matching integration assertion.
+- 2026-03-01 16:14 - Validation for Slice 1: `npm run compile-tests` and `npm run test:integration` passed.
+- 2026-03-01 16:15 - Acceptance validation for Slice 1: `npm run test:acceptance` passed (7 tests).
+
+## Decisions and Notes
+- Initial decision: do not remove integration tests until acceptance parity is proven for each mapped assertion.
+- Initial decision: keep a minimal integration layer for coverage that acceptance currently cannot exercise without brittle UI automation or internal test-only hooks.
+- Migration rule: each slice must move exactly one assertion and remove at most one matching integration assertion in the same change.
+
+## Validation
+- [ ] Lint passes
+- [ ] Build/compile passes
+- [ ] Tests pass
+- [ ] Docs updated (`docs/product.md`, `docs/architecture.md`, `docs/adr/`, `docs/contributing.md` as applicable)
+- [ ] Each completed slice is independently deployable and testable
+- [ ] Per-slice documentation and plan-maintenance fields were reviewed and applied
+
+## Outcome
+Summarize what shipped and link related PR/issues/files.
+
+## Lessons Learned
+- To be filled during execution and finalized before plan archival.

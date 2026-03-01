@@ -1,8 +1,6 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { QueueTreeItem } from '../../features/queues/adapters/TreeQueueItemAdapter';
 import type { QueueMessage } from '../../features/queueMessages/adapters/WebviewQueueMessagesPanelAdapter';
-import { QueueMessagesPanel } from '../../features/queueMessages/adapters/WebviewQueueMessagesPanelAdapter';
 import { deactivate } from '../../extension';
 
 suite('Extension Test Suite', () => {
@@ -29,20 +27,6 @@ suite('Extension Test Suite', () => {
         assert.ok(commands.includes('busdriver.moveMessageToQueue'));
         assert.ok(commands.includes('busdriver.deleteMessages'));
         assert.ok(commands.includes('busdriver.purgeQueue'));
-    });
-
-    test('showQueueMessages exits when connection string is missing', async () => {
-        QueueMessagesPanel.currentPanel?.dispose();
-
-        const item = new QueueTreeItem(
-            { name: 'missing-connection-queue', connectionId: 'missing-connection' },
-            { activeMessageCount: 0 },
-            vscode.TreeItemCollapsibleState.None
-        );
-
-        await vscode.commands.executeCommand('busdriver.showQueueMessages', item);
-
-        assert.strictEqual(QueueMessagesPanel.currentPanel, undefined);
     });
 
     test('purgeQueue command exits when queue payload is missing', async () => {

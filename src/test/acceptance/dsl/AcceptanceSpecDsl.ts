@@ -213,6 +213,19 @@ export class AcceptanceScenarioBuilder {
         return this;
     }
 
+    whenOpenQueueMessagesForConnection(queueName: string, connectionId: string): AcceptanceScenarioBuilder {
+        this.steps.push(async () => {
+            const queueItem = new QueueTreeItem(
+                { name: queueName, connectionId },
+                { activeMessageCount: 0 },
+                vscode.TreeItemCollapsibleState.None
+            );
+            await vscode.commands.executeCommand('busdriver.showQueueMessages', queueItem);
+        });
+
+        return this;
+    }
+
     thenPanelShowsQueue(queueAlias: string): AcceptanceScenarioBuilder {
         this.steps.push(async (context) => {
             const queueName = this.resolveQueueName(context, queueAlias);
@@ -222,6 +235,17 @@ export class AcceptanceScenarioBuilder {
 
             assert.ok(panelQueue, `Expected queue panel for '${queueName}' to be open`);
             assert.strictEqual(panelQueue.name, queueName);
+        });
+
+        return this;
+    }
+
+    thenNoQueuePanelOpen(): AcceptanceScenarioBuilder {
+        this.steps.push(async () => {
+            const panelQueue = await waitForValue(async () => {
+                return vscode.commands.executeCommand<Queue | undefined>('busdriver.__test.getOpenQueuePanel');
+            }, 3, 25);
+            assert.strictEqual(panelQueue, undefined);
         });
 
         return this;
