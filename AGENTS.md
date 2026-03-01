@@ -114,6 +114,7 @@ Before considering work complete:
 - `npm run compile` and `npm run compile-tests` pass.
 - Required tests pass:
   - always: `npm run test:unit`
+  - always: `npm run test:acceptance`
   - add `npm run test:integration` when integration-relevant code changed (`src/extension.ts`, `src/features/**/adapters/**`, `src/shared/adapters/**`, `src/test/**/*.integration.test.ts`, or build/test wiring).
 - Documentation reviewed and updated in the same change set.
 - Plan file updated with progress, validation, outcome, and lessons learned.

@@ -51,10 +51,13 @@ Current integration suite focus:
 Before opening or merging a PR, all of the following must pass:
 - lint
 - build/compile
-- required tests for the change (unit tests always; integration tests when integration-relevant code changed)
+- `npm run test:unit`
+- `npm run test:acceptance`
+- `npm run test:integration` when integration-relevant code changed
 
 Lint policy note:
 - Type-aware TypeScript ESLint rules are enforced as errors in this repository; warning-free lint output is expected.
+- Core JavaScript/TypeScript safety and style rules are also enforced as errors; lint output should contain no warnings.
 
 Suggested local sequence:
 ```bash
@@ -65,7 +68,7 @@ npm run test:integration
 npm run test:acceptance
 ```
 
-If your change is not integration-relevant, `npm run test:unit` is the minimum required test run.
+If your change is not integration-relevant, `npm run test:unit` and `npm run test:acceptance` are the minimum required test run.
 
 ## Acceptance Tests (Azure Service Bus Namespace Required)
 Acceptance tests validate exposed user-facing command flows against a real Service Bus backend and are written as specification-style scenarios under `src/test/acceptance/**`.
