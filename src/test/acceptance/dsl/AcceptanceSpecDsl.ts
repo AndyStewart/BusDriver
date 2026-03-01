@@ -272,6 +272,24 @@ export class AcceptanceScenarioBuilder {
         return this;
     }
 
+    whenMoveMessagesWithNoAvailableQueues(sourceAlias: string, messageIds: string[]): AcceptanceScenarioBuilder {
+        this.steps.push(async (context) => {
+            assert.ok(context.connectionString, 'Connection string must exist before moving messages');
+            assert.ok(context.connectionId, 'Connection ID must exist before moving messages');
+
+            const sourceQueue = this.resolveQueueName(context, sourceAlias);
+            await this.setQueueCatalog(context.connectionId!, context.connectionName ?? 'Acceptance', []);
+
+            const messages = await this.buildCommandMessages(context, sourceQueue, messageIds);
+            assert.ok(messages.length > 0, 'Move operation requires at least one message');
+
+            await vscode.commands.executeCommand('busdriver.moveMessageToQueue', messages);
+            await this.clearQueueCatalog();
+        });
+
+        return this;
+    }
+
     whenDeleteMessages(queueAlias: string, messageIds: string[]): AcceptanceScenarioBuilder {
         this.steps.push(async (context) => {
             const queueName = this.resolveQueueName(context, queueAlias);

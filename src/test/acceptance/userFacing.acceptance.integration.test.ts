@@ -73,6 +73,21 @@ suite('Acceptance: User-facing features', () => {
             .run();
     });
 
+    test('user sees an error when there are no queues available to move a message to', async () => {
+        await specScenario('Move message when no target queues are available')
+            .givenConnection('acceptance-move-no-targets', connectionString!)
+            .givenQueues(['source'])
+            .givenMessages('source', [
+                {
+                    messageId: 'move-no-target-001',
+                    body: { type: 'move' }
+                }
+            ])
+            .whenMoveMessagesWithNoAvailableQueues('source', ['move-no-target-001'])
+            .thenQueueContains('source', ['move-no-target-001'])
+            .run();
+    });
+
     test('user can delete selected messages', async () => {
         await specScenario('Delete selected messages')
             .givenConnection('acceptance-delete', connectionString!)

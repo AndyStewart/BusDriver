@@ -189,6 +189,8 @@ This preserves confidence while reducing overlap and avoiding a brittle push tow
 - 2026-03-01 16:10 - Slice 1 implemented: added acceptance test for missing-connection `showQueueMessages` guard and removed matching integration assertion.
 - 2026-03-01 16:14 - Validation for Slice 1: `npm run compile-tests` and `npm run test:integration` passed.
 - 2026-03-01 16:15 - Acceptance validation for Slice 1: `npm run test:acceptance` passed (7 tests).
+- 2026-03-01 16:20 - Slice 2 implemented: added acceptance test for `moveMessageToQueue` with no available target queues and removed matching integration assertion.
+- 2026-03-01 16:23 - Validation for Slice 2: `npm run compile-tests`, `npm run test:integration`, and `npm run test:acceptance` passed (8 acceptance tests).
 
 ## Decisions and Notes
 - Initial decision: do not remove integration tests until acceptance parity is proven for each mapped assertion.
