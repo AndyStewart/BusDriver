@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { deactivate } from '../../extension';
 
 suite('Extension Test Suite', () => {
-    vscode.window.showInformationMessage('Start all tests.');
+    void vscode.window.showInformationMessage('Start all tests.');
 
     test('Extension should be present', () => {
         assert.ok(vscode.extensions.getExtension('busdriver.busdriver'));
@@ -12,8 +12,8 @@ suite('Extension Test Suite', () => {
     test('Extension should activate', async () => {
         const ext = vscode.extensions.getExtension('busdriver.busdriver');
         assert.ok(ext);
-        await ext!.activate();
-        assert.strictEqual(ext!.isActive, true);
+        await ext.activate();
+        assert.strictEqual(ext.isActive, true);
     });
 
     test('Commands should be registered', async () => {

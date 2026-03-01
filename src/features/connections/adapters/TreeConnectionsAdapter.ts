@@ -243,8 +243,8 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         QueueMessagesPanel.pendingDragMessage = undefined;
 
         const parsedMessages = parseDroppedMessages(
-            dataTransfer.get('text/uri-list')?.value,
-            dataTransfer.get('text/plain')?.value
+            getDataTransferString(dataTransfer, 'text/uri-list'),
+            getDataTransferString(dataTransfer, 'text/plain')
         );
         const messages = selectDropMessages(pendingDragMessages, parsedMessages);
 
@@ -309,4 +309,14 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
 
         this.refresh();
     }
+}
+
+function getDataTransferString(dataTransfer: vscode.DataTransfer, mimeType: string): string | undefined {
+    const item = dataTransfer.get(mimeType);
+    if (!item) {
+        return undefined;
+    }
+
+    const value = item.value as unknown;
+    return typeof value === 'string' ? value : undefined;
 }

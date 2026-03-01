@@ -4,7 +4,7 @@ import type { QueueMessage } from '../../../../features/queueMessages/ports/Mess
 
 describe('AzureMessageOperations', () => {
     it('sends messages with original metadata', async () => {
-        let sentMessage: unknown | undefined;
+        let sentMessage: unknown;
         let senderClosed = false;
         let clientClosed = false;
 

@@ -88,7 +88,7 @@ function formatMessageBody(message: QueueMessage): { displayBody: string; rawBod
     if (Buffer.isBuffer(message.body)) {
         const textBody = message.body.toString();
         try {
-            const parsed = JSON.parse(textBody.trim());
+            const parsed = parseJsonValue(textBody.trim());
             return {
                 displayBody: JSON.stringify(parsed, null, 2),
                 rawBody: parsed
@@ -105,6 +105,10 @@ function formatMessageBody(message: QueueMessage): { displayBody: string; rawBod
         displayBody: JSON.stringify(message.body, null, 2),
         rawBody: message.body
     };
+}
+
+function parseJsonValue(value: string): unknown {
+    return JSON.parse(value) as unknown;
 }
 
 function getNextSequenceNumber(sequenceNumber?: string): string | undefined {

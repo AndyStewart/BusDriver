@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { VsCodeConnectionRepository } from './features/connections/adapters/VsCodeConnectionRepositoryAdapter';
 import { ConnectionService } from './features/connections/application/ConnectionService';
 import { ConnectionsProvider, type ConnectionsProviderUi } from './features/connections/adapters/TreeConnectionsAdapter';
+import type { ConnectionTreeItem } from './features/connections/adapters/TreeConnectionItemAdapter';
 import { AzureMessageOperations } from './features/queueMessages/adapters/AzureMessageOperationsAdapter';
 import { VsCodeMessageGridColumnsRepository } from './features/queueMessages/adapters/VsCodeMessageGridColumnsRepositoryAdapter';
 import { VsCodeQueueMessagesPanelGateway } from './features/queueMessages/adapters/VsCodeQueueMessagesPanelGatewayAdapter';
@@ -150,7 +151,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     const deleteConnectionCommand = vscode.commands.registerCommand(
         'busdriver.deleteConnection',
-        async (item) => {
+        async (item: ConnectionTreeItem) => {
             await connectionsProvider.deleteConnection(item);
         }
     );
@@ -182,7 +183,7 @@ export function activate(context: vscode.ExtensionContext) {
             try {
                 await openQueueMessages.open(item.queue);
             } catch {
-                vscode.window.showErrorMessage('Connection string not found');
+                void vscode.window.showErrorMessage('Connection string not found');
             }
         }
     );
@@ -193,7 +194,7 @@ export function activate(context: vscode.ExtensionContext) {
             const allQueues = acceptanceRuntime.queueCatalog ?? await listQueues.list();
 
             if (allQueues.length === 0) {
-                vscode.window.showErrorMessage('No queues available');
+                void vscode.window.showErrorMessage('No queues available');
                 return;
             }
 
@@ -213,7 +214,7 @@ export function activate(context: vscode.ExtensionContext) {
             const targetConnectionString = targetConnection?.connectionString?.trim();
 
             if (!targetConnectionString) {
-                vscode.window.showErrorMessage('Connection string not found for target queue');
+                void vscode.window.showErrorMessage('Connection string not found for target queue');
                 return;
             }
 
@@ -271,7 +272,7 @@ export function activate(context: vscode.ExtensionContext) {
             }
 
             if (!firstSource || domainMessages.some(message => !message.source)) {
-                vscode.window.showErrorMessage('Cannot delete message: source queue information missing');
+                void vscode.window.showErrorMessage('Cannot delete message: source queue information missing');
                 return;
             }
 
@@ -305,7 +306,7 @@ export function activate(context: vscode.ExtensionContext) {
             const connectionString = payload?.connectionString?.trim();
 
             if (!queue || !connectionString) {
-                vscode.window.showErrorMessage('Cannot purge queue: queue information missing');
+                void vscode.window.showErrorMessage('Cannot purge queue: queue information missing');
                 return;
             }
 
@@ -334,7 +335,7 @@ export function activate(context: vscode.ExtensionContext) {
                 ? `No messages found in ${queue.name} to purge.`
                 : `Purged ${purgedCount} message${purgedCount === 1 ? '' : 's'} from ${queue.name}.`;
 
-            vscode.window.showInformationMessage(resultMessage);
+            void vscode.window.showInformationMessage(resultMessage);
 
             if (QueueMessagesPanel.currentPanel) {
                 await QueueMessagesPanel.currentPanel.refreshView();
@@ -351,7 +352,7 @@ export function activate(context: vscode.ExtensionContext) {
                 try {
                     await openQueueMessages.open(selected.queue);
                 } catch {
-                    vscode.window.showErrorMessage('Connection string not found');
+                    void vscode.window.showErrorMessage('Connection string not found');
                 }
             }
         }
@@ -501,16 +502,16 @@ function reportProgress(progress: vscode.Progress<{ message?: string; increment?
 
 function showOperationSummary(summary: { level: 'info' | 'warning' | 'error'; message: string }): void {
     if (summary.level === 'info') {
-        vscode.window.showInformationMessage(summary.message);
+        void vscode.window.showInformationMessage(summary.message);
         return;
     }
 
     if (summary.level === 'warning') {
-        vscode.window.showWarningMessage(summary.message);
+        void vscode.window.showWarningMessage(summary.message);
         return;
     }
 
-    vscode.window.showErrorMessage(summary.message);
+    void vscode.window.showErrorMessage(summary.message);
 }
 
 export function deactivate() {

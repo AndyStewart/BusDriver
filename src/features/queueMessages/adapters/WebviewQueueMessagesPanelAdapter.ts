@@ -15,6 +15,11 @@ export interface QueueMessage extends QueueMessageView {
     sourceConnectionString?: string;
 }
 
+interface WebviewCommandMessage {
+    command?: unknown;
+    data?: unknown;
+}
+
 export class QueueMessagesPanel {
     public static currentPanel: QueueMessagesPanel | undefined;
     public static pendingDragMessage: QueueMessage | QueueMessage[] | undefined;
@@ -35,7 +40,7 @@ export class QueueMessagesPanel {
         this._panel = panel;
 
         // Set the webview's initial html content
-        this._update();
+        void this._update();
 
         // Listen for when the panel is disposed
         // This happens when the user closes the panel or when the panel is closed programmatically
@@ -43,29 +48,35 @@ export class QueueMessagesPanel {
 
         // Handle messages from the webview
         this._panel.webview.onDidReceiveMessage(
-            async message => {
-                switch (message.command) {
+            async (message: WebviewCommandMessage) => {
+                const command = getCommand(message);
+                switch (command) {
                     case 'refresh':
-                        this._update();
+                        void this._update();
                         return;
                     case 'loadMore':
-                        await this._loadMoreMessages(message.data?.fromSequenceNumber);
+                        await this._loadMoreMessages(getFromSequenceNumber(message.data));
                         return;
                     case 'configureColumns':
                         await vscode.commands.executeCommand('busdriver.configureMessageGridColumns');
                         return;
                     case 'removeMessage':
                         // Message was successfully moved, refresh the view
-                        this._update();
+                        void this._update();
                         return;
                     case 'startDrag':
                         // Store the message data for drag operation
-                        QueueMessagesPanel.pendingDragMessage = message.data;
+                        QueueMessagesPanel.pendingDragMessage = asQueueMessagePayload(message.data);
                         return;
                     case 'moveToQueue': {
+                        const payload = asQueueMessagePayload(message.data);
+                        if (!payload) {
+                            return;
+                        }
+
                         // User wants to move message(s) to another queue
                         const messages = withSourceContext<QueueMessage>(
-                            message.data as QueueMessage | QueueMessage[],
+                            payload,
                             this.queue,
                             this.connectionString
                         );
@@ -73,9 +84,14 @@ export class QueueMessagesPanel {
                         return;
                     }
                     case 'deleteMessages': {
+                        const payload = asQueueMessagePayload(message.data);
+                        if (!payload) {
+                            return;
+                        }
+
                         // User wants to delete message(s)
                         const messages = withSourceContext<QueueMessage>(
-                            message.data as QueueMessage | QueueMessage[],
+                            payload,
                             this.queue,
                             this.connectionString
                         );
@@ -177,7 +193,7 @@ export class QueueMessagesPanel {
     }
 
     public notifyMessageRemoved(sequenceNumber: string): void {
-        this._panel.webview.postMessage({
+        void this._panel.webview.postMessage({
             command: 'removeMessage',
             sequenceNumber: sequenceNumber
         });
@@ -299,18 +315,47 @@ export class QueueMessagesPanel {
                 pageSize: QueueMessagesPanel.pageSize,
                 fromSequenceNumber
             });
-            this._panel.webview.postMessage(buildAppendMessagesCommand(
+            void this._panel.webview.postMessage(buildAppendMessagesCommand(
                 page.rows,
                 page.messages,
                 QueueMessagesPanel.pageSize
             ));
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            vscode.window.showErrorMessage(`Failed to load more messages: ${errorMessage}`);
-            this._panel.webview.postMessage(buildEmptyAppendMessagesCommand());
+            void vscode.window.showErrorMessage(`Failed to load more messages: ${errorMessage}`);
+            void this._panel.webview.postMessage(buildEmptyAppendMessagesCommand());
         } finally {
             this._isLoadingMore = false;
         }
     }
 
+}
+
+function getCommand(message: WebviewCommandMessage): string | undefined {
+    return typeof message.command === 'string' ? message.command : undefined;
+}
+
+function getFromSequenceNumber(data: unknown): string | undefined {
+    if (!isRecord(data)) {
+        return undefined;
+    }
+
+    return typeof data.fromSequenceNumber === 'string' ? data.fromSequenceNumber : undefined;
+}
+
+function asQueueMessagePayload(data: unknown): QueueMessage | QueueMessage[] | undefined {
+    if (Array.isArray(data)) {
+        const messages = data.filter(isQueueMessage);
+        return messages.length > 0 ? messages : undefined;
+    }
+
+    return isQueueMessage(data) ? data : undefined;
+}
+
+function isQueueMessage(value: unknown): value is QueueMessage {
+    return isRecord(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }

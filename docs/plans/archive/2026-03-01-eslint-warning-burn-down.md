@@ -2,7 +2,7 @@
 
 - Date: 2026-03-01
 - Owner: Codex (GPT-5)
-- Status: In Progress
+- Status: Completed
 
 ## Goal
 Reduce the current ESLint warning count from 146 to 0, then promote type-aware TypeScript linting rules from warning-only enforcement to CI-safe best-practice enforcement.
@@ -126,6 +126,12 @@ Define small slices that deliver user-visible value incrementally.
 - 2026-03-01 16:22 - Created plan with baseline warning inventory and prioritized cleanup slices.
 - 2026-03-01 16:26 - Completed Slice 1: `@typescript-eslint/require-await` warning count reduced to 0 and rule promoted to `error`.
 - 2026-03-01 16:26 - Validation run for Slice 1: `npm run lint`, `npm run compile`, `npm run compile-tests`, `npm run test:unit`, `npm run test:integration` all passed.
+- 2026-03-01 16:29 - Completed Slice 2: `@typescript-eslint/no-floating-promises` warning count reduced to 0 and rule promoted to `error`.
+- 2026-03-01 16:29 - Validation run for Slice 2: `npm run lint`, `npm run compile`, `npm run compile-tests`, `npm run test:unit`, `npm run test:integration` all passed.
+- 2026-03-01 16:31 - Completed Slice 3: `no-unsafe-assignment`, `no-unsafe-member-access`, and `no-unsafe-argument` warning counts reduced to 0 and all three rules promoted to `error`.
+- 2026-03-01 16:31 - Validation run for Slice 3: `npm run lint`, `npm run compile`, `npm run compile-tests`, `npm run test:unit`, `npm run test:integration` all passed.
+- 2026-03-01 16:33 - Completed Slice 4: `no-unnecessary-type-assertion` and `no-redundant-type-constituents` warning counts reduced to 0 and both rules promoted to `error`.
+- 2026-03-01 16:33 - Validation run for Slice 4: `npm run lint`, `npm run compile`, `npm run compile-tests`, `npm run test:unit`, `npm run test:integration` all passed.
 
 ## Decisions and Notes
 - Start with high-volume/low-risk warnings (`require-await`) to reduce noise quickly.
@@ -133,16 +139,18 @@ Define small slices that deliver user-visible value incrementally.
 - Use integration tests when touching composition root and adapters per contributing guidance.
 
 ## Validation
-- [ ] Lint passes
-- [ ] Build/compile passes
-- [ ] Tests pass
-- [ ] Docs updated (`docs/product.md`, `docs/architecture.md`, `docs/adr/`, `docs/contributing.md` as applicable)
-- [ ] Each completed slice is independently deployable and testable
-- [ ] Per-slice documentation and plan-maintenance fields were reviewed and applied
+- [x] Lint passes
+- [x] Build/compile passes
+- [x] Tests pass
+- [x] Docs updated (`docs/product.md`, `docs/architecture.md`, `docs/adr/`, `docs/contributing.md` as applicable)
+- [x] Each completed slice is independently deployable and testable
+- [x] Per-slice documentation and plan-maintenance fields were reviewed and applied
 
 ## Lessons Learned
 - `require-await` produces high noise in Promise-shaped test doubles; a focused ESLint override for `src/test/**/*.ts` keeps production enforcement strict while avoiding low-value churn in test scaffolding.
 - Promote rule severity in the same change as cleanup to prevent warning regressions between slices.
+- For VS Code APIs returning Thenables, explicit `void` makes fire-and-forget intent clear and avoids accidental unhandled async flows.
+- Narrowing untyped webview/data-transfer payloads at adapter boundaries eliminates unsafe typing warnings without leaking UI concerns into application/domain layers.
 
 ## Outcome
-Planning complete. Execution not started in this change.
+All four slices completed. ESLint warning count is 0, and all targeted type-aware rules are now enforced as `error`. Validation gates (`lint`, compile, unit tests, integration tests) all passed.

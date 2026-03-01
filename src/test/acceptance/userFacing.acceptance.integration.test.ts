@@ -13,7 +13,7 @@ suite('Acceptance: User-facing features', () => {
 
         const extension = vscode.extensions.getExtension('busdriver.busdriver');
         assert.ok(extension, 'Extension busdriver.busdriver should be installed in test host');
-        await extension!.activate();
+        await extension.activate();
     });
 
     test('user sees an error when opening queue messages without a saved connection', async () => {

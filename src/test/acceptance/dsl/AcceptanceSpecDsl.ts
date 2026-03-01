@@ -151,10 +151,10 @@ export class AcceptanceScenarioBuilder {
             await this.setCommandOverrides({ warningResponse: 'Delete' });
             const treeItem = new ConnectionTreeItem(
                 {
-                    id: connection!.id,
-                    name: connection!.name,
-                    connectionString: connection!.connectionString,
-                    createdAt: new Date(connection!.createdAt)
+                    id: connection.id,
+                    name: connection.name,
+                    connectionString: connection.connectionString,
+                    createdAt: new Date(connection.createdAt)
                 },
                 vscode.TreeItemCollapsibleState.Collapsed
             );
@@ -203,7 +203,7 @@ export class AcceptanceScenarioBuilder {
             assert.ok(context.connectionId, 'Connection ID must be available before opening queue messages');
             const queueName = this.resolveQueueName(context, queueAlias);
             const queueItem = new QueueTreeItem(
-                { name: queueName, connectionId: context.connectionId! },
+                { name: queueName, connectionId: context.connectionId },
                 { activeMessageCount: 0 },
                 vscode.TreeItemCollapsibleState.None
             );
@@ -266,7 +266,7 @@ export class AcceptanceScenarioBuilder {
 
             const sourceQueue = this.resolveQueueName(context, sourceAlias);
             const targetQueue = this.resolveQueueName(context, targetAlias);
-            await this.setQueueCatalog(context.connectionId!, context.connectionName ?? 'Acceptance', [targetQueue]);
+            await this.setQueueCatalog(context.connectionId, context.connectionName ?? 'Acceptance', [targetQueue]);
 
             const messages = await this.buildCommandMessages(context, sourceQueue, messageIds);
             assert.ok(messages.length > 0, 'Move operation requires at least one message');
@@ -286,7 +286,7 @@ export class AcceptanceScenarioBuilder {
             assert.ok(context.connectionId, 'Connection ID must exist before moving messages');
 
             const sourceQueue = this.resolveQueueName(context, sourceAlias);
-            await this.setQueueCatalog(context.connectionId!, context.connectionName ?? 'Acceptance', []);
+            await this.setQueueCatalog(context.connectionId, context.connectionName ?? 'Acceptance', []);
 
             const messages = await this.buildCommandMessages(context, sourceQueue, messageIds);
             assert.ok(messages.length > 0, 'Move operation requires at least one message');
@@ -463,7 +463,7 @@ export class AcceptanceScenarioBuilder {
                 sequenceNumber: message.sequenceNumber?.toString() ?? '',
                 messageId: message.messageId?.toString() ?? '',
                 body: normalizeMessageBody(message.body),
-                rawBody: message.body,
+                rawBody: message.body as unknown,
                 properties: message.applicationProperties ?? {},
                 enqueuedTime: message.enqueuedTimeUtc?.toISOString() ?? 'N/A',
                 deliveryCount: message.deliveryCount ?? 0,
@@ -538,7 +538,7 @@ export class AcceptanceScenarioBuilder {
     }
 
     private async runCleanupStep(
-        step: () => unknown | Promise<unknown> | Thenable<unknown>,
+        step: () => unknown,
         cleanupErrors: string[],
         description: string
     ): Promise<void> {

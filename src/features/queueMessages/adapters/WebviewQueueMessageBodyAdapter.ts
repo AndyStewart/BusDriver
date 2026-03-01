@@ -16,7 +16,7 @@ export function formatMessageBody(message: PortQueueMessage): MessageBodyPayload
     if (Buffer.isBuffer(message.body)) {
         const textBody = message.body.toString();
         try {
-            const parsed = JSON.parse(textBody.trim());
+            const parsed = parseJsonValue(textBody.trim());
             return {
                 displayBody: JSON.stringify(parsed, null, 2),
                 rawBody: parsed
@@ -33,4 +33,8 @@ export function formatMessageBody(message: PortQueueMessage): MessageBodyPayload
         displayBody: JSON.stringify(message.body, null, 2),
         rawBody: message.body
     };
+}
+
+function parseJsonValue(value: string): unknown {
+    return JSON.parse(value) as unknown;
 }

@@ -53,6 +53,9 @@ Before opening or merging a PR, all of the following must pass:
 - build/compile
 - required tests for the change (unit tests always; integration tests when integration-relevant code changed)
 
+Lint policy note:
+- Type-aware TypeScript ESLint rules are enforced as errors in this repository; warning-free lint output is expected.
+
 Suggested local sequence:
 ```bash
 npm run lint
