@@ -8,37 +8,6 @@ suite('QueueMessagesPanel integration', () => {
         QueueMessagesPanel.currentPanel?.dispose();
     });
 
-    test('createOrShow reuses current panel and updates queue context', async () => {
-        const loadQueueMessages = new FakeLoadQueueMessages();
-
-        await QueueMessagesPanel.createOrShow(
-            extensionUri(),
-            { name: 'queue-a', connectionId: 'conn-a' },
-            'Endpoint=sb://conn-a',
-            loadQueueMessages
-        );
-        const initialPanel = QueueMessagesPanel.currentPanel;
-        assert.ok(initialPanel);
-
-        await QueueMessagesPanel.createOrShow(
-            extensionUri(),
-            { name: 'queue-b', connectionId: 'conn-b' },
-            'Endpoint=sb://conn-b',
-            loadQueueMessages
-        );
-        const reusedPanel = QueueMessagesPanel.currentPanel;
-
-        assert.strictEqual(reusedPanel, initialPanel);
-
-        const panelState = reusedPanel as unknown as {
-            queue: { name: string; connectionId: string };
-            connectionString: string;
-        };
-        assert.strictEqual(panelState.queue.name, 'queue-b');
-        assert.strictEqual(panelState.queue.connectionId, 'conn-b');
-        assert.strictEqual(panelState.connectionString, 'Endpoint=sb://conn-b');
-    });
-
     test('dispose clears currentPanel', async () => {
         const loadQueueMessages = new FakeLoadQueueMessages();
 

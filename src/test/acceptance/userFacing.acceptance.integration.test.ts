@@ -38,6 +38,16 @@ suite('Acceptance: User-facing features', () => {
             .run();
     });
 
+    test('user sees the newly selected queue when switching between queues', async () => {
+        await specScenario('Switch between queue message views')
+            .givenConnection('acceptance-open-switch', connectionString!)
+            .givenQueues(['orders', 'payments'])
+            .whenOpenQueueMessages('orders')
+            .whenOpenQueueMessages('payments')
+            .thenPanelShowsQueue('payments')
+            .run();
+    });
+
     test('user can add, refresh, and remove a connection', async () => {
         const connectionName = `acceptance-add-delete-${Date.now()}`;
 
