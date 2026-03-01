@@ -12,6 +12,35 @@ import { mapMoveMessageToDomain, selectDropMessages, type MoveMessageData } from
 import { summarizeMoveResult } from '../../queueMessages/adapters/CommandMessageOperationSummaryAdapter';
 import { QueueMessagesPanel } from '../../queueMessages/adapters/WebviewQueueMessagesPanelAdapter';
 
+export interface ConnectionsProviderUi {
+    showInputBox(options?: vscode.InputBoxOptions): Thenable<string | undefined>;
+    showWarningMessage<T extends string>(
+        message: string,
+        options?: vscode.MessageOptions,
+        ...items: T[]
+    ): Thenable<T | undefined>;
+    showInformationMessage(message: string): Thenable<string | undefined>;
+    showErrorMessage(message: string): Thenable<string | undefined>;
+    withProgress<R>(
+        options: vscode.ProgressOptions,
+        task: (progress: vscode.Progress<{ message?: string; increment?: number }>) => Thenable<R>
+    ): Thenable<R>;
+}
+
+const defaultConnectionsProviderUi: ConnectionsProviderUi = {
+    showInputBox: (options) => vscode.window.showInputBox(options),
+    showWarningMessage: (message, options, ...items) => {
+        if (options) {
+            return vscode.window.showWarningMessage(message, options, ...items);
+        }
+
+        return vscode.window.showWarningMessage(message, ...items);
+    },
+    showInformationMessage: (message) => vscode.window.showInformationMessage(message),
+    showErrorMessage: (message) => vscode.window.showErrorMessage(message),
+    withProgress: (options, task) => vscode.window.withProgress(options, task)
+};
+
 export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTreeItem | QueueTreeItem>, vscode.TreeDragAndDropController<QueueTreeItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<ConnectionTreeItem | QueueTreeItem | undefined | null | void> = new vscode.EventEmitter<ConnectionTreeItem | QueueTreeItem | undefined | null | void>();
     readonly onDidChangeTreeData: vscode.Event<ConnectionTreeItem | QueueTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
@@ -26,7 +55,8 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         private readonly queueRegistryService: QueueRegistryService,
         private readonly moveMessages: MoveMessages,
         private readonly logger: Logger,
-        private readonly telemetry: Telemetry
+        private readonly telemetry: Telemetry,
+        private readonly ui: ConnectionsProviderUi = defaultConnectionsProviderUi
     ) {
         void this.loadConnections();
     }
@@ -63,7 +93,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
     }
 
     async addConnection(): Promise<void> {
-        const name = await vscode.window.showInputBox({
+        const name = await this.ui.showInputBox({
             prompt: 'Enter a name for this connection',
             placeHolder: 'My Service Bus',
             validateInput: (value) => {
@@ -81,7 +111,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
             return;
         }
 
-        const connectionString = await vscode.window.showInputBox({
+        const connectionString = await this.ui.showInputBox({
             prompt: 'Enter the Service Bus connection string',
             placeHolder: 'Endpoint=sb://...',
             password: true,
@@ -102,7 +132,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
 
         const result = await this.connectionService.addConnection(name, connectionString);
         if (!result.ok) {
-            vscode.window.showErrorMessage(result.error.message);
+            void this.ui.showErrorMessage(result.error.message);
             return;
         }
 
@@ -111,11 +141,11 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         this.telemetry.trackEvent('connections.added');
         this.refresh();
 
-        vscode.window.showInformationMessage(`Connection '${connection.name}' added successfully`);
+        void this.ui.showInformationMessage(`Connection '${connection.name}' added successfully`);
     }
 
     async deleteConnection(item: ConnectionTreeItem): Promise<void> {
-        const confirm = await vscode.window.showWarningMessage(
+        const confirm = await this.ui.showWarningMessage(
             `Are you sure you want to delete connection '${item.connection.name}'?`,
             { modal: true },
             'Delete'
@@ -126,7 +156,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
             await this.connectionService.deleteConnection(item.connection.id);
             this.telemetry.trackEvent('connections.deleted');
             this.refresh();
-            vscode.window.showInformationMessage(`Connection '${item.connection.name}' deleted`);
+            void this.ui.showInformationMessage(`Connection '${item.connection.name}' deleted`);
         }
     }
 
@@ -174,7 +204,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
     private async getQueues(connection: Connection): Promise<QueueTreeItem[]> {
         try {
             if (!connection.connectionString) {
-                vscode.window.showErrorMessage(`Connection string not found for ${connection.name}`);
+                void this.ui.showErrorMessage(`Connection string not found for ${connection.name}`);
                 return [];
             }
 
@@ -198,7 +228,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
             const normalizedError = error instanceof Error ? error : new Error(errorMessage);
             this.logger.error('Failed to list queues for connection', { connectionId: connection.id, message: errorMessage });
             this.telemetry.trackError('queues.connection_list_failed', normalizedError, { connectionId: connection.id });
-            vscode.window.showErrorMessage(`Failed to list queues for ${connection.name}: ${errorMessage}`);
+            void this.ui.showErrorMessage(`Failed to list queues for ${connection.name}: ${errorMessage}`);
             return [];
         }
     }
@@ -230,7 +260,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         const connectionString = await this.getConnectionString(target.queue.connectionId);
 
         if (!connectionString) {
-            vscode.window.showErrorMessage('Connection string not found for target queue');
+            void this.ui.showErrorMessage('Connection string not found for target queue');
             return;
         }
 
@@ -239,7 +269,7 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
         const isMultiple = messageCount > 1;
         const domainMessages = messages.map(message => mapMoveMessageToDomain(message));
 
-        const results = await vscode.window.withProgress({
+        const results = await this.ui.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: isMultiple
                 ? `Moving ${messageCount} messages to ${target.queue.name}...`
@@ -264,11 +294,11 @@ export class ConnectionsProvider implements vscode.TreeDataProvider<ConnectionTr
 
         const summary = summarizeMoveResult(target.queue.name, messageCount, results);
         if (summary.level === 'info') {
-            vscode.window.showInformationMessage(summary.message);
+            void this.ui.showInformationMessage(summary.message);
         } else if (summary.level === 'warning') {
-            vscode.window.showWarningMessage(summary.message);
+            void this.ui.showWarningMessage(summary.message);
         } else {
-            vscode.window.showErrorMessage(summary.message);
+            void this.ui.showErrorMessage(summary.message);
         }
 
         if (QueueMessagesPanel.currentPanel && results.successful.length > 0) {

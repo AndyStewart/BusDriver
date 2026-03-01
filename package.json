@@ -98,12 +98,15 @@
         "compile": "node esbuild.js",
         "watch": "node esbuild.js --watch",
         "package": "node esbuild.js --production",
-        "compile-tests": "tsc -p . --outDir out",
+        "compile-tests": "node -e \"require('fs').rmSync('out', { recursive: true, force: true })\" && tsc -p . --outDir out",
         "watch-tests": "tsc -p . -w --outDir out",
         "lint": "eslint src --ext ts",
         "test:unit": "npm run compile-tests && npx mocha \"out/test/features/**/application/**/*.test.js\" \"out/test/features/**/adapters/**/*.test.js\" \"out/test/shared/**/*.test.js\"",
         "test:unit:coverage": "npm run compile-tests && c8 --reporter=text-summary --reporter=json-summary --reporter=lcov --report-dir coverage/unit npx mocha \"out/test/features/**/application/**/*.test.js\" \"out/test/features/**/adapters/**/*.test.js\" \"out/test/shared/**/*.test.js\"",
-        "test:integration": "npm run compile-tests && npm run compile && vscode-test",
+        "test:integration": "npm run compile-tests && npm run compile && node ./out/test/runTest.js",
+        "test:acceptance:runner": "npm run compile-tests && npm run compile && node ./out/test/runAcceptanceTest.js",
+        "test:acceptance": "BUSDRIVER_ACCEPTANCE_MODE=1 npm run test:acceptance:runner",
+        "test:acceptance:ci": "BUSDRIVER_ACCEPTANCE_MODE=1 xvfb-run -a npm run test:acceptance:runner",
         "test": "npm run test:unit && npm run test:integration"
     },
     "dependencies": {

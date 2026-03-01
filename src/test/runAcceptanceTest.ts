@@ -1,21 +1,18 @@
 import * as path from 'path';
 import { runTests } from '@vscode/test-electron';
+import { requireAzureServiceBusNamespaceConnectionString } from './acceptance/AcceptanceConnectionStringGuard';
 import { resolveCachedVsCodeExecutable } from './VsCodeExecutableResolver';
 
 const VSCODE_VERSION = '1.109.5';
 
 async function main() {
     try {
-        // The folder containing the Extension Manifest package.json
-        // Passed to `--extensionDevelopmentPath`
+        process.env.BUSDRIVER_ACCEPTANCE_SERVICEBUS_CONNECTION_STRING =
+            requireAzureServiceBusNamespaceConnectionString(process.env.BUSDRIVER_ACCEPTANCE_SERVICEBUS_CONNECTION_STRING);
+
         const extensionDevelopmentPath = path.resolve(__dirname, '../../');
-
-        // The path to the extension test script
-        // Passed to --extensionTestsPath
-        const extensionTestsPath = path.resolve(__dirname, './suite/index.js');
+        const extensionTestsPath = path.resolve(__dirname, './suite/acceptanceIndex.js');
         const vscodeExecutablePath = resolveCachedVsCodeExecutable(extensionDevelopmentPath, VSCODE_VERSION);
-
-        // Download VS Code, unzip it and run the integration test
         await runTests({
             extensionDevelopmentPath,
             extensionTestsPath,
@@ -23,7 +20,7 @@ async function main() {
             vscodeExecutablePath
         });
     } catch (err) {
-        console.error('Failed to run tests:', err);
+        console.error('Failed to run acceptance tests:', err);
         process.exit(1);
     }
 }

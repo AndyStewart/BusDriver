@@ -23,6 +23,7 @@ export class QueueMessagesPanel {
     private readonly _panel: vscode.WebviewPanel;
     private _disposables: vscode.Disposable[] = [];
     private _isLoadingMore = false;
+    private _isDisposed = false;
 
     private constructor(
         panel: vscode.WebviewPanel,
@@ -145,7 +146,23 @@ export class QueueMessagesPanel {
         );
     }
 
+    public static getCurrentPanelQueue(): Queue | undefined {
+        if (!QueueMessagesPanel.currentPanel) {
+            return undefined;
+        }
+
+        return {
+            name: QueueMessagesPanel.currentPanel.queue.name,
+            connectionId: QueueMessagesPanel.currentPanel.queue.connectionId
+        };
+    }
+
     public dispose() {
+        if (this._isDisposed) {
+            return;
+        }
+
+        this._isDisposed = true;
         QueueMessagesPanel.currentPanel = undefined;
 
         // Clean up our resources
@@ -171,8 +188,27 @@ export class QueueMessagesPanel {
     }
 
     private async _update() {
+        if (this._isDisposed) {
+            return;
+        }
+
         this._panel.title = `Queue: ${this.queue.name}`;
-        this._panel.webview.html = await this._getHtmlForWebview();
+        const html = await this._getHtmlForWebview();
+
+        if (this._isDisposed) {
+            return;
+        }
+
+        try {
+            this._panel.webview.html = html;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (errorMessage.includes('Webview is disposed')) {
+                return;
+            }
+
+            throw error instanceof Error ? error : new Error(String(error));
+        }
     }
 
     private async _getHtmlForWebview(): Promise<string> {

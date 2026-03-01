@@ -70,6 +70,11 @@ jobs:
       - name: Skip integration tests
         if: steps.change-filter.outputs.integration != 'true'
         run: echo "No integration-relevant code changes detected; skipping integration tests."
+
+      - name: Run acceptance tests
+        env:
+          BUSDRIVER_ACCEPTANCE_SERVICEBUS_CONNECTION_STRING: ${{ secrets.BUSDRIVER_ACCEPTANCE_SERVICEBUS_CONNECTION_STRING }}
+        run: xvfb-run -a npm run test:acceptance:ci
       
       - name: Package extension
         if: github.ref == 'refs/heads/main'

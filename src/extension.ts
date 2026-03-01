@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { VsCodeConnectionRepository } from './features/connections/adapters/VsCodeConnectionRepositoryAdapter';
 import { ConnectionService } from './features/connections/application/ConnectionService';
-import { ConnectionsProvider } from './features/connections/adapters/TreeConnectionsAdapter';
+import { ConnectionsProvider, type ConnectionsProviderUi } from './features/connections/adapters/TreeConnectionsAdapter';
 import { AzureMessageOperations } from './features/queueMessages/adapters/AzureMessageOperationsAdapter';
 import { VsCodeMessageGridColumnsRepository } from './features/queueMessages/adapters/VsCodeMessageGridColumnsRepositoryAdapter';
 import { VsCodeQueueMessagesPanelGateway } from './features/queueMessages/adapters/VsCodeQueueMessagesPanelGatewayAdapter';
@@ -26,8 +26,32 @@ import { VsCodeTelemetry } from './shared/adapters/vscode/VsCodeTelemetryAdapter
 
 let messageOperationsForDispose: AzureMessageOperations | undefined;
 
+interface AcceptanceQueueEntry {
+    queue: { name: string; connectionId: string };
+    connection: { id: string; name: string };
+}
+
+interface AcceptanceCommandOverrides {
+    inputBoxValues?: string[];
+    warningResponses?: string[];
+    warningResponse?: string;
+    quickPickLabel?: string;
+    quickPickIndex?: number;
+}
+
+interface AcceptanceRuntimeState {
+    queueCatalog?: AcceptanceQueueEntry[];
+    commandOverridesByScope: Map<string, AcceptanceCommandOverrides>;
+}
+
+const ACCEPTANCE_MODE = process.env.BUSDRIVER_ACCEPTANCE_MODE === '1';
+
 export function activate(context: vscode.ExtensionContext) {
     console.log('BusDriver extension is now active');
+
+    const acceptanceRuntime: AcceptanceRuntimeState = {
+        commandOverridesByScope: new Map()
+    };
 
     const connectionRepository = new VsCodeConnectionRepository(context);
     const connectionService = new ConnectionService(connectionRepository);
@@ -57,13 +81,49 @@ export function activate(context: vscode.ExtensionContext) {
     );
     const openQueueMessages = new OpenQueueMessagesUseCase(connectionService, queueMessagesPanelGateway);
 
+    const acceptanceAwareUi: ConnectionsProviderUi = {
+        showInputBox: async (options) => {
+            const override = consumeInputBoxOverride(acceptanceRuntime);
+            if (override !== undefined) {
+                return override;
+            }
+
+            return vscode.window.showInputBox(options);
+        },
+        showWarningMessage: async (message, options, ...items) => {
+            const override = consumeWarningOverride(acceptanceRuntime);
+            if (override !== undefined) {
+                const matchedItem = items.find(item => item === override);
+                if (matchedItem) {
+                    return matchedItem;
+                }
+            }
+
+            if (options) {
+                return vscode.window.showWarningMessage(message, options, ...items);
+            }
+
+            return vscode.window.showWarningMessage(message, ...items);
+        },
+        showInformationMessage: async (message) => {
+            return vscode.window.showInformationMessage(message);
+        },
+        showErrorMessage: async (message) => {
+            return vscode.window.showErrorMessage(message);
+        },
+        withProgress: async (options, task) => {
+            return vscode.window.withProgress(options, task);
+        }
+    };
+
     // Create the connections provider
     const connectionsProvider = new ConnectionsProvider(
         connectionService,
         queueRegistryService,
         moveMessages,
         logger,
-        telemetry
+        telemetry,
+        ACCEPTANCE_MODE ? acceptanceAwareUi : undefined
     );
 
     // Register the tree view
@@ -99,11 +159,14 @@ export function activate(context: vscode.ExtensionContext) {
         'busdriver.configureMessageGridColumns',
         async () => {
             const currentColumns = await messageGridColumnsService.getPropertyColumns();
-            const input = await vscode.window.showInputBox({
-                prompt: 'Enter comma-separated application property keys to show as columns',
-                value: currentColumns.join(', '),
-                placeHolder: 'traceId, correlationId, tenant'
-            });
+            const override = consumeInputBoxOverride(acceptanceRuntime);
+            const input = override !== undefined
+                ? override
+                : await vscode.window.showInputBox({
+                    prompt: 'Enter comma-separated application property keys to show as columns',
+                    value: currentColumns.join(', '),
+                    placeHolder: 'traceId, correlationId, tenant'
+                });
 
             if (input === undefined) {
                 return;
@@ -127,7 +190,7 @@ export function activate(context: vscode.ExtensionContext) {
     const moveMessageToQueueCommand = vscode.commands.registerCommand(
         'busdriver.moveMessageToQueue',
         async (messageData: QueueMessage | QueueMessage[]) => {
-            const allQueues = await listQueues.list();
+            const allQueues = acceptanceRuntime.queueCatalog ?? await listQueues.list();
 
             if (allQueues.length === 0) {
                 vscode.window.showErrorMessage('No queues available');
@@ -140,9 +203,7 @@ export function activate(context: vscode.ExtensionContext) {
                 queue: q.queue
             }));
 
-            const selected = await vscode.window.showQuickPick(items, {
-                placeHolder: 'Select target queue to move message to'
-            });
+            const selected = await selectQueueForMove(items, acceptanceRuntime);
 
             if (!selected) {
                 return;
@@ -197,7 +258,7 @@ export function activate(context: vscode.ExtensionContext) {
             const domainMessages = messages.map(message => mapMoveMessageToDomain(message));
             const firstSource = domainMessages[0]?.source;
 
-            const confirmation = await vscode.window.showWarningMessage(
+            const confirmation = consumeWarningOverride(acceptanceRuntime) ?? await vscode.window.showWarningMessage(
                 messageCount === 1
                     ? 'Delete this message? This cannot be undone.'
                     : `Delete ${messageCount} messages? This cannot be undone.`,
@@ -248,7 +309,7 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            const confirmation = await vscode.window.showWarningMessage(
+            const confirmation = consumeWarningOverride(acceptanceRuntime) ?? await vscode.window.showWarningMessage(
                 `Purge all messages from ${queue.name}? This cannot be undone.`,
                 { modal: true },
                 'Purge'
@@ -296,6 +357,72 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
+    const acceptanceCommands: vscode.Disposable[] = [];
+    if (ACCEPTANCE_MODE) {
+        acceptanceCommands.push(
+            vscode.commands.registerCommand(
+                'busdriver.__test.seedConnection',
+                async (payload: { name: string; connectionString: string }) => {
+                    const result = await connectionService.addConnection(payload.name, payload.connectionString);
+                    if (!result.ok) {
+                        throw new Error(result.error.message);
+                    }
+
+                    connectionsProvider.refresh();
+                }
+            ),
+            vscode.commands.registerCommand(
+                'busdriver.__test.clearConnections',
+                async () => {
+                    const connections = await connectionService.listConnections();
+                    for (const connection of connections) {
+                        await connectionService.deleteConnection(connection.id);
+                    }
+
+                    connectionsProvider.refresh();
+                }
+            ),
+            vscode.commands.registerCommand(
+                'busdriver.__test.listConnections',
+                async () => {
+                    return connectionService.listConnections();
+                }
+            ),
+            vscode.commands.registerCommand(
+                'busdriver.__test.setQueueCatalog',
+                async (payload: { entries: AcceptanceQueueEntry[] | undefined }) => {
+                    acceptanceRuntime.queueCatalog = payload.entries;
+                }
+            ),
+            vscode.commands.registerCommand(
+                'busdriver.__test.setCommandOverrides',
+                async (payload: { scopeId?: string; overrides?: AcceptanceCommandOverrides }) => {
+                    const scopeId = payload.scopeId ?? getAcceptanceScopeId();
+                    acceptanceRuntime.commandOverridesByScope.set(scopeId, payload.overrides ?? {});
+                }
+            ),
+            vscode.commands.registerCommand(
+                'busdriver.__test.getOpenQueuePanel',
+                async () => {
+                    return QueueMessagesPanel.getCurrentPanelQueue();
+                }
+            ),
+            vscode.commands.registerCommand(
+                'busdriver.__test.closeQueuePanel',
+                async () => {
+                    QueueMessagesPanel.currentPanel?.dispose();
+                }
+            ),
+            vscode.commands.registerCommand(
+                'busdriver.__test.resetCommandOverrides',
+                async (payload?: { scopeId?: string }) => {
+                    const scopeId = payload?.scopeId ?? getAcceptanceScopeId();
+                    acceptanceRuntime.commandOverridesByScope.delete(scopeId);
+                }
+            )
+        );
+    }
+
     context.subscriptions.push(
         treeView,
         addConnectionCommand,
@@ -305,8 +432,61 @@ export function activate(context: vscode.ExtensionContext) {
         showQueueMessagesCommand,
         moveMessageToQueueCommand,
         deleteMessagesCommand,
-        purgeQueueCommand
+        purgeQueueCommand,
+        ...acceptanceCommands
     );
+}
+
+function getAcceptanceScopeId(): string {
+    return process.env.BUSDRIVER_ACCEPTANCE_WORKER_ID ?? 'default';
+}
+
+function getScopedOverrides(runtime: AcceptanceRuntimeState): AcceptanceCommandOverrides | undefined {
+    if (!ACCEPTANCE_MODE) {
+        return undefined;
+    }
+
+    return runtime.commandOverridesByScope.get(getAcceptanceScopeId());
+}
+
+function consumeInputBoxOverride(runtime: AcceptanceRuntimeState): string | undefined {
+    const overrides = getScopedOverrides(runtime);
+    if (!overrides?.inputBoxValues || overrides.inputBoxValues.length === 0) {
+        return undefined;
+    }
+
+    return overrides.inputBoxValues.shift();
+}
+
+function consumeWarningOverride(runtime: AcceptanceRuntimeState): string | undefined {
+    const overrides = getScopedOverrides(runtime);
+    if (!overrides) {
+        return undefined;
+    }
+
+    if (overrides.warningResponses && overrides.warningResponses.length > 0) {
+        return overrides.warningResponses.shift();
+    }
+
+    return overrides.warningResponse;
+}
+
+async function selectQueueForMove(
+    items: Array<{ label: string; description: string; queue: Queue }>,
+    runtime: AcceptanceRuntimeState
+): Promise<{ label: string; description: string; queue: Queue } | undefined> {
+    const overrides = getScopedOverrides(runtime);
+    if (overrides?.quickPickLabel) {
+        return items.find(item => item.label === overrides.quickPickLabel);
+    }
+
+    if (typeof overrides?.quickPickIndex === 'number') {
+        return items[overrides.quickPickIndex];
+    }
+
+    return vscode.window.showQuickPick(items, {
+        placeHolder: 'Select target queue to move message to'
+    });
 }
 
 function reportProgress(progress: vscode.Progress<{ message?: string; increment?: number }>, processed: number, total: number): void {

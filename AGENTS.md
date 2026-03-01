@@ -75,6 +75,8 @@ Tests:
 - `npm run test:unit`
 - `npm run test:unit:coverage`
 - `npm run test:integration`
+- `npm run test:acceptance`
+- `npm run test:acceptance:ci`
 - `npm test` (runs `test:unit` then `test:integration`)
 
 Lint:
@@ -94,7 +96,8 @@ Current CI sequence:
 5. `npm run test:unit:coverage` (non-gating coverage visibility)
 6. Publish unit coverage summary/artifact
 7. Run integration tests conditionally (path filter) via `xvfb-run -a npm run test:integration`
-8. On `main`, package `.vsix`
+8. Run acceptance tests via `xvfb-run -a npm run test:acceptance:ci` (requires `BUSDRIVER_ACCEPTANCE_SERVICEBUS_CONNECTION_STRING` for a real Azure namespace)
+9. On `main`, package `.vsix`
 
 ## Coding Conventions
 - TypeScript strict-first; explicit types on public APIs.

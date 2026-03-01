@@ -56,9 +56,31 @@ npm run lint
 npm run compile
 npm run test:unit
 npm run test:integration
+npm run test:acceptance
 ```
 
 If your change is not integration-relevant, `npm run test:unit` is the minimum required test run.
+
+## Acceptance Tests (Azure Service Bus Namespace Required)
+Acceptance tests validate exposed user-facing command flows against a real Service Bus backend and are written as specification-style scenarios under `src/test/acceptance/**`.
+
+Local command:
+```bash
+npm run test:acceptance
+```
+
+Required environment variable:
+`BUSDRIVER_ACCEPTANCE_SERVICEBUS_CONNECTION_STRING=Endpoint=sb://<your-namespace>.servicebus.windows.net/;SharedAccessKeyName=<name>;SharedAccessKey=<key>`
+
+Acceptance runs fail fast when:
+- the variable is missing
+- the connection string points to localhost
+- the connection string contains `UseDevelopmentEmulator=true`
+
+CI command:
+```bash
+npm run test:acceptance:ci
+```
 
 ## Coverage Visibility (Non-Gating)
 Coverage reporting is enabled for visibility and review prioritization, not as a merge gate.

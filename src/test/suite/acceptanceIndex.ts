@@ -3,34 +3,32 @@ import Mocha from 'mocha';
 import { globSync } from 'glob';
 
 export function run(): Promise<void> {
-    // Create the mocha test
     const mocha = new Mocha({
         ui: 'tdd',
-        color: true
+        color: true,
+        timeout: 60000
     });
 
     const testsRoot = path.resolve(__dirname, '..');
 
     return new Promise((resolve, reject) => {
-        const files = globSync('**/*.integration.test.js', { cwd: testsRoot, nodir: true });
-        const integrationFiles = files.filter(file => !file.endsWith('.acceptance.integration.test.js'));
-        if (integrationFiles.length === 0) {
-            reject(new Error(`No integration tests discovered under ${testsRoot}`));
+        const files = globSync('acceptance/**/*.acceptance.integration.test.js', { cwd: testsRoot, nodir: true });
+        if (files.length === 0) {
+            reject(new Error(`No acceptance tests discovered under ${testsRoot}`));
             return;
         }
 
-        integrationFiles.forEach(f => mocha.addFile(path.resolve(testsRoot, f)));
+        files.forEach(f => mocha.addFile(path.resolve(testsRoot, f)));
 
         try {
             mocha.run((failures: number) => {
                 if (failures > 0) {
-                    reject(new Error(`${failures} tests failed.`));
+                    reject(new Error(`${failures} acceptance tests failed.`));
                 } else {
                     resolve();
                 }
             });
         } catch (err) {
-            console.error(err);
             reject(err);
         }
     });
