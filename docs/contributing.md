@@ -15,7 +15,7 @@ Core aims:
 ## Contribution Principles
 - Keep changes small, focused, and easy to review.
 - Follow the existing ports-and-adapters architecture.
-- Keep port contracts explicit inside each feature under `src/features/**/ports/**`.
+- Keep port contracts explicit under `src/ports/{primary,secondary}/**`.
 - Never log secrets (connection strings, keys, tokens).
 - Prefer pure functions for parsing, normalization, and serialization logic.
 - Keep side effects at boundaries (providers, adapters, composition root).
@@ -34,7 +34,7 @@ Integration tests are required for PRs that introduce new code or modify integra
 
 Integration-relevant changes typically include:
 - command registration, activation, or extension wiring (`src/extension.ts`)
-- drag/drop adapter behavior in the connections tree (`src/features/connections/adapters/**`)
+- drag/drop adapter behavior in the connections tree (`src/adapters/primary/**`)
 - changes to test/build wiring that affects extension runtime behavior (`package.json`, `tsconfig.json`, `esbuild.js`)
 
 Integration tests are usually not required for:
@@ -61,9 +61,8 @@ Lint policy note:
 - Architecture boundary rules are enforced in ESLint:
   - no feature-to-feature imports in `application` and `ports` layers
   - `application` and `ports` must not depend on VS Code/Azure SDKs or adapter implementations
-  - adapter layers must not import from other feature slices; use `src/shared/**` contracts and composition-root wiring
-  - feature port files are interface-only contracts; `type` aliases/re-exports are not allowed
-  - feature port interface method custom param/return types must be imported from that feature's `application` folder
+  - port files are interface-only contracts; `type` aliases/re-exports are not allowed
+  - port interface method custom param/return types must be imported from feature modules or local port contracts
 - Safety guardrails are lint-enforced:
   - console usage is restricted to explicit boundary files (logger/composition/test paths)
   - webview inline script payloads must use safe serialization helpers

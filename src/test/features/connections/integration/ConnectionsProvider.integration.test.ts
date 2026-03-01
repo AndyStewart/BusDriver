@@ -1,20 +1,20 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { MoveMessagesUseCase } from '../../../../features/queueMessages/application/MoveMessagesUseCase';
-import type { Connection } from '../../../../features/connections/application/Connection';
-import { ConnectionService } from '../../../../features/connections/application/ConnectionService';
-import type { QueueMessageData } from '../../../../features/connections/adapters/MessageMoveAdapter';
-import { MessageMover } from '../../../../features/queueMessages/application/MessageMover';
-import { MessageSender } from '../../../../features/queueMessages/application/MessageSender';
-import { QueueRegistryService } from '../../../../features/queues/application/QueueRegistryService';
-import type { ConnectionRepository } from '../../../../features/connections/ports/ConnectionRepository';
-import { QueueTreeItem } from '../../../../shared/adapters/vscode/QueueTreeItemAdapter';
-import type { Logger } from '../../../../shared/ports/Logger';
-import type { MessageOperations } from '../../../../features/queueMessages/ports/MessageOperations';
-import type { QueueMessage } from '../../../../features/queueMessages/application/MessageOperationsTypes';
-import type { QueueRegistry } from '../../../../features/queues/ports/QueueRegistry';
-import type { Telemetry } from '../../../../shared/ports/Telemetry';
-import { ConnectionsProvider, type QueueRegistryPort } from '../../../../features/connections/adapters/TreeConnectionsAdapter';
+import { MoveMessagesUseCase } from '../../../../features/queueMessages/MoveMessagesUseCase';
+import type { Connection } from '../../../../features/connections/Connection';
+import { ConnectionService } from '../../../../features/connections/ConnectionService';
+import type { QueueMessageData } from '../../../../adapters/primary/MessageMoveAdapter';
+import { MessageMover } from '../../../../features/queueMessages/MessageMover';
+import { MessageSender } from '../../../../features/queueMessages/MessageSender';
+import { QueueRegistryService } from '../../../../features/queues/QueueRegistryService';
+import type { ConnectionRepository } from '../../../../ports/secondary/ConnectionRepository';
+import { QueueTreeItem } from '../../../../adapters/primary/QueueTreeItemAdapter';
+import type { Logger } from '../../../../ports/secondary/Logger';
+import type { MessageOperations } from '../../../../ports/secondary/MessageOperations';
+import type { QueueMessage } from '../../../../features/queueMessages/MessageOperationsTypes';
+import type { QueueRegistry } from '../../../../ports/secondary/QueueRegistry';
+import type { Telemetry } from '../../../../ports/secondary/Telemetry';
+import { ConnectionsProvider, type QueueRegistryPort } from '../../../../adapters/primary/TreeConnectionsAdapter';
 
 suite('ConnectionsProvider integration', () => {
     test('handleDrop uses pending drag messages and clears pending state', async () => {

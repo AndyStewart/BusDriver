@@ -1,7 +1,7 @@
 import * as assert from 'assert';
-import { MessageDeleter } from '../../../../features/queueMessages/application/MessageDeleter';
-import type { MessageWithSource } from '../../../../features/queueMessages/application/MessageTypes';
-import { FakeMessageOperations } from '../../../shared/fakes/FakeMessageOperations';
+import { MessageDeleter } from '../../../../features/queueMessages/MessageDeleter';
+import type { MessageWithSource } from '../../../../features/queueMessages/MessageTypes';
+import { FakeMessageOperations } from '../../common/fakes/FakeMessageOperations';
 
 describe('MessageDeleter', () => {
     it('deletes messages with source information', async () => {

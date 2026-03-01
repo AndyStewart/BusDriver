@@ -1,7 +1,7 @@
 import * as assert from 'assert';
-import { MessageSender } from '../../../../features/queueMessages/application/MessageSender';
-import type { QueueMessage } from '../../../../features/queueMessages/application/MessageOperationsTypes';
-import { FakeMessageOperations } from '../../../shared/fakes/FakeMessageOperations';
+import { MessageSender } from '../../../../features/queueMessages/MessageSender';
+import type { QueueMessage } from '../../../../features/queueMessages/MessageOperationsTypes';
+import { FakeMessageOperations } from '../../common/fakes/FakeMessageOperations';
 
 describe('MessageSender', () => {
     it('forwards messages to the operations port', async () => {

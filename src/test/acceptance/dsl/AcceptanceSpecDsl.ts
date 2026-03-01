@@ -1,9 +1,9 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { ServiceBusAdministrationClient, ServiceBusClient } from '@azure/service-bus';
-import { ConnectionTreeItem } from '../../../features/connections/adapters/TreeConnectionItemAdapter';
-import { type QueueMessage } from '../../../features/queueMessages/adapters/WebviewQueueMessagesPanelAdapter';
-import { QueueTreeItem, type Queue } from '../../../features/queues/adapters/TreeQueueItemAdapter';
+import { ConnectionTreeItem } from '../../../adapters/primary/TreeConnectionItemAdapter';
+import { type QueueMessage } from '../../../adapters/primary/WebviewQueueMessagesPanelAdapter';
+import { QueueTreeItem, type Queue } from '../../../adapters/primary/TreeQueueItemAdapter';
 
 interface TestConnection {
     id: string;

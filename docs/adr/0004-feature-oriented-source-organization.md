@@ -1,7 +1,7 @@
 # ADR-0004: Feature-Oriented Source Organization
 
 - Date: 2026-02-16
-- Status: Accepted
+- Status: Superseded
 
 ## Context
 BusDriver used a global layer-first structure (`src/domain`, `src/application`, `src/ports`, `src/adapters`, `src/providers`) that preserved hexagonal boundaries but spread feature changes across many top-level folders.
@@ -33,3 +33,4 @@ Tradeoffs:
 - `docs/architecture.md`
 - `docs/contributing.md`
 - `AGENTS.md`
+- Superseded by `docs/adr/0005-top-level-layer-source-organization.md`

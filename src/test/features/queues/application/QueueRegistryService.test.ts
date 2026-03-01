@@ -1,8 +1,8 @@
 import * as assert from 'assert';
-import { QueueRegistryService } from '../../../../features/queues/application/QueueRegistryService';
-import type { QueueRegistry } from '../../../../features/queues/ports/QueueRegistry';
-import type { Connection } from '../../../../shared/application/Connection';
-import { InMemoryConnectionRepository } from '../../../shared/fakes/InMemoryConnectionRepository';
+import { QueueRegistryService } from '../../../../features/queues/QueueRegistryService';
+import type { QueueRegistry } from '../../../../ports/secondary/QueueRegistry';
+import type { Connection } from '../../../../features/common/Connection';
+import { InMemoryConnectionRepository } from '../../common/fakes/InMemoryConnectionRepository';
 
 describe('QueueRegistryService', () => {
     it('lists queues for a single connection', async () => {

@@ -1,9 +1,9 @@
 import * as assert from 'assert';
-import { LoadQueueMessagesUseCase } from '../../../../features/queueMessages/application/LoadQueueMessagesUseCase';
-import { MessageGridColumnsService } from '../../../../features/queueMessages/application/MessageGridColumnsService';
-import type { MessageGridColumnsRepository } from '../../../../features/queueMessages/ports/MessageGridColumnsRepository';
-import type { MessageOperations } from '../../../../features/queueMessages/ports/MessageOperations';
-import type { QueueMessage } from '../../../../features/queueMessages/application/MessageOperationsTypes';
+import { LoadQueueMessagesUseCase } from '../../../../features/queueMessages/LoadQueueMessagesUseCase';
+import { MessageGridColumnsService } from '../../../../features/queueMessages/MessageGridColumnsService';
+import type { MessageGridColumnsRepository } from '../../../../ports/secondary/MessageGridColumnsRepository';
+import type { MessageOperations } from '../../../../ports/secondary/MessageOperations';
+import type { QueueMessage } from '../../../../features/queueMessages/MessageOperationsTypes';
 
 describe('LoadQueueMessagesUseCase', () => {
     it('loads first page from sequence number 1 and maps messages to view data', async () => {

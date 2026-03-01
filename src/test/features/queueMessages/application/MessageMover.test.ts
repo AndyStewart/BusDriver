@@ -1,8 +1,8 @@
 import * as assert from 'assert';
-import { MessageMover } from '../../../../features/queueMessages/application/MessageMover';
-import { MessageSender } from '../../../../features/queueMessages/application/MessageSender';
-import type { MessageWithSource } from '../../../../features/queueMessages/application/MessageTypes';
-import { FakeMessageOperations } from '../../../shared/fakes/FakeMessageOperations';
+import { MessageMover } from '../../../../features/queueMessages/MessageMover';
+import { MessageSender } from '../../../../features/queueMessages/MessageSender';
+import type { MessageWithSource } from '../../../../features/queueMessages/MessageTypes';
+import { FakeMessageOperations } from '../../common/fakes/FakeMessageOperations';
 
 describe('MessageMover', () => {
     it('moves messages and deletes from source when provided', async () => {

@@ -40,3 +40,4 @@ Use this template for each new ADR:
 - [ADR-0002: TDD-First for Defects and Behavior Changes](./0002-tdd-first-for-defects-and-behavior-changes.md)
 - [ADR-0003: Explicit Primary and Secondary Ports](./0003-explicit-primary-secondary-ports.md)
 - [ADR-0004: Feature-Oriented Source Organization](./0004-feature-oriented-source-organization.md)
+- [ADR-0005: Top-Level Layer Source Organization](./0005-top-level-layer-source-organization.md)

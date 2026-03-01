@@ -1,6 +1,6 @@
 import * as assert from 'assert';
-import { MessageGridColumnsService } from '../../../../features/queueMessages/application/MessageGridColumnsService';
-import type { MessageGridColumnsRepository } from '../../../../features/queueMessages/ports/MessageGridColumnsRepository';
+import { MessageGridColumnsService } from '../../../../features/queueMessages/MessageGridColumnsService';
+import type { MessageGridColumnsRepository } from '../../../../ports/secondary/MessageGridColumnsRepository';
 
 class FakeMessageGridColumnsRepository implements MessageGridColumnsRepository {
     constructor(public stored: unknown) {}

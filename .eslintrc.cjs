@@ -28,15 +28,15 @@ module.exports = {
     },
     overrides: [
         {
-            files: ['src/features/connections/application/**/*.ts', 'src/features/connections/ports/**/*.ts'],
+            files: ['src/features/connections/**/*.ts'],
             rules: {
                 'no-restricted-imports': [
                     'error',
                     {
                         patterns: [
                             {
-                                group: ['../../queues/**', '../../queueMessages/**', 'src/features/**'],
-                                message: 'Cross-feature imports are not allowed. Move shared contracts to src/shared/**.'
+                                group: ['../queues/**', '../queueMessages/**', 'src/features/queues/**', 'src/features/queueMessages/**'],
+                                message: 'Cross-feature imports are not allowed. Move shared contracts to src/features/common/**.'
                             }
                         ]
                     }
@@ -44,15 +44,15 @@ module.exports = {
             }
         },
         {
-            files: ['src/features/queues/application/**/*.ts', 'src/features/queues/ports/**/*.ts'],
+            files: ['src/features/queues/**/*.ts'],
             rules: {
                 'no-restricted-imports': [
                     'error',
                     {
                         patterns: [
                             {
-                                group: ['../../connections/**', '../../queueMessages/**', 'src/features/**'],
-                                message: 'Cross-feature imports are not allowed. Move shared contracts to src/shared/**.'
+                                group: ['../connections/**', '../queueMessages/**', 'src/features/connections/**', 'src/features/queueMessages/**'],
+                                message: 'Cross-feature imports are not allowed. Move shared contracts to src/features/common/**.'
                             }
                         ]
                     }
@@ -60,15 +60,15 @@ module.exports = {
             }
         },
         {
-            files: ['src/features/queueMessages/application/**/*.ts', 'src/features/queueMessages/ports/**/*.ts'],
+            files: ['src/features/queueMessages/**/*.ts'],
             rules: {
                 'no-restricted-imports': [
                     'error',
                     {
                         patterns: [
                             {
-                                group: ['../../connections/**', '../../queues/**', 'src/features/**'],
-                                message: 'Cross-feature imports are not allowed. Move shared contracts to src/shared/**.'
+                                group: ['../connections/**', '../queues/**', 'src/features/connections/**', 'src/features/queues/**'],
+                                message: 'Cross-feature imports are not allowed. Move shared contracts to src/features/common/**.'
                             }
                         ]
                     }
@@ -76,7 +76,7 @@ module.exports = {
             }
         },
         {
-            files: ['src/features/**/application/**/*.ts'],
+            files: ['src/features/**/*.ts'],
             rules: {
                 'no-restricted-imports': [
                     'error',
@@ -89,7 +89,7 @@ module.exports = {
                         ],
                         patterns: [
                             {
-                                group: ['@azure/*', '../adapters/**', '../../*/adapters/**', '../../../shared/adapters/**'],
+                                group: ['@azure/*', '../adapters/**', '../../adapters/**', '../../../adapters/**', 'src/adapters/**'],
                                 message: 'Application layer must not depend on SDK or adapter implementations.'
                             }
                         ]
@@ -98,7 +98,7 @@ module.exports = {
             }
         },
         {
-            files: ['src/features/**/ports/**/*.ts'],
+            files: ['src/ports/**/*.ts'],
             rules: {
                 'no-restricted-imports': [
                     'error',
@@ -111,56 +111,13 @@ module.exports = {
                         ],
                         patterns: [
                             {
-                                group: ['@azure/*', '../adapters/**', '../../*/adapters/**', '../../../shared/adapters/**'],
-                                message: 'Port contracts must not depend on application/adapters or SDK implementations.'
+                                group: ['@azure/*', '../adapters/**', '../../adapters/**', '../../../adapters/**', 'src/adapters/**'],
+                                message: 'Port contracts must not depend on adapter implementations or SDK types.'
                             }
                         ]
                     }
-                ]
-            }
-        },
-        {
-            files: ['src/shared/ports/**/*.ts'],
-            rules: {
-                'no-restricted-imports': [
-                    'error',
-                    {
-                        paths: [
-                            {
-                                name: 'vscode',
-                                message: 'Port contracts must remain framework-agnostic.'
-                            }
-                        ],
-                        patterns: [
-                            {
-                                group: ['@azure/*', '../adapters/**', '../../*/adapters/**', '../../../shared/adapters/**'],
-                                message: 'Port contracts must not depend on application/adapters or SDK implementations.'
-                            }
-                        ]
-                    }
-                ]
-            }
-        },
-        {
-            files: ['src/features/**/ports/**/*.ts', 'src/shared/ports/**/*.ts'],
-            rules: {
+                ],
                 'port-interface-application-types': 'error'
-            }
-        },
-        {
-            files: ['src/features/**/adapters/**/*.ts'],
-            rules: {
-                'no-restricted-imports': [
-                    'error',
-                    {
-                        patterns: [
-                            {
-                                group: ['../../connections/**', '../../queues/**', '../../queueMessages/**', 'src/features/**'],
-                                message: 'Adapters should not import from other features; move shared behavior to src/shared/**.'
-                            }
-                        ]
-                    }
-                ]
             }
         },
         {
@@ -168,15 +125,15 @@ module.exports = {
             excludedFiles: [
                 'src/test/**/*.ts',
                 'src/extension.ts',
-                'src/shared/adapters/vscode/VsCodeLoggerAdapter.ts',
-                'src/features/queueMessages/adapters/AzureMessageOperationsAdapter.ts'
+                'src/adapters/secondary/VsCodeLoggerAdapter.ts',
+                'src/adapters/secondary/AzureMessageOperationsAdapter.ts'
             ],
             rules: {
                 'no-console': 'error'
             }
         },
         {
-            files: ['src/features/queueMessages/adapters/WebviewQueueMessagesPanelAdapter.ts'],
+            files: ['src/adapters/primary/WebviewQueueMessagesPanelAdapter.ts'],
             rules: {
                 'no-restricted-syntax': [
                     'error',
@@ -189,11 +146,10 @@ module.exports = {
         },
         {
             files: [
-                'src/test/shared/fakes/**/*.ts',
-                'src/test/features/**/adapters/**/*.test.ts',
+                'src/test/features/common/fakes/**/*.ts',
+                'src/test/adapters/**/*.test.ts',
                 'src/test/features/**/application/**/*.test.ts',
                 'src/test/features/**/integration/**/*.test.ts',
-                'src/test/shared/adapters/**/*.test.ts',
                 'src/test/acceptance/dsl/**/*.ts'
             ],
             rules: {

@@ -27,8 +27,12 @@ const BUILTIN_TYPES = new Set([
     'Error'
 ]);
 
-function isApplicationImport(sourceValue) {
-    return /(^|\/)application\//.test(sourceValue);
+function isFeatureImport(sourceValue) {
+    return /(^|\/)features\//.test(sourceValue);
+}
+
+function isLocalPortImport(sourceValue) {
+    return sourceValue.startsWith('./') || sourceValue.startsWith('../');
 }
 
 function collectTypeReferences(typeNode, outNames, seen) {
@@ -71,15 +75,14 @@ module.exports = {
     meta: {
         type: 'problem',
         docs: {
-            description: 'Enforce feature ports to contain exported method-only interfaces and application-sourced custom method types.'
+            description: 'Enforce top-level ports to contain exported method-only interfaces and application-sourced custom method types.'
         },
         schema: []
     },
     create(context) {
         const filename = context.getFilename();
-        const isFeaturePort = filename.includes('/src/features/') && filename.includes('/ports/');
-        const isSharedPort = filename.includes('/src/shared/ports/');
-        if (!isFeaturePort && !isSharedPort) {
+        const isTopLevelPort = filename.includes('/src/ports/');
+        if (!isTopLevelPort) {
             return {};
         }
 
@@ -174,15 +177,15 @@ module.exports = {
                         if (!source) {
                             report(
                                 member,
-                                `Port method custom type '${typeName}' must be imported from this feature's application folder.`
+                                `Port method custom type '${typeName}' must be imported from a feature module or a local port contract.`
                             );
                             continue;
                         }
 
-                        if (!isApplicationImport(source)) {
+                        if (!isFeatureImport(source) && !isLocalPortImport(source)) {
                             report(
                                 member,
-                                `Port method custom type '${typeName}' must be imported from this feature's application folder.`
+                                `Port method custom type '${typeName}' must be imported from a feature module or a local port contract.`
                             );
                         }
                     }

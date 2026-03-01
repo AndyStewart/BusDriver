@@ -6,18 +6,21 @@ BusDriver is a VS Code extension for managing Azure Service Bus connections and 
 ## Architectural Style
 The project follows a ports-and-adapters (hexagonal) architecture:
 
-- **Feature modules (`src/features/*`)**: each feature is organized as a vertical slice with local `application`, `ports`, and `adapters` folders.
-  - `src/features/connections/**`: connection management and tree interactions.
-  - `src/features/queues/**`: queue discovery and queue registry orchestration.
-  - `src/features/queueMessages/**`: queue-message load/move/delete/purge behavior and panel UI.
-- **Shared cross-feature code (`src/shared/*`)**:
-  - `src/shared/adapters/**`: shared adapter implementations (for example, logging, telemetry, Azure client pooling).
-  - `src/shared/ports/**`: shared outbound method contracts.
-  - `src/shared/application/**`: shared cross-feature data contracts.
+- **Feature core modules (`src/features/*`)**:
+  - `src/features/connections/**`: connection service and connection-focused core contracts.
+  - `src/features/queues/**`: queue registry service and queue listing contracts.
+  - `src/features/queueMessages/**`: queue-message load/move/delete/purge/open use-cases and core contracts.
+  - `src/features/common/**`: cross-feature core types (for example, `Connection`, `Queue`).
+- **Top-level ports (`src/ports/*`)**:
+  - `src/ports/primary/**`: inbound capability interfaces consumed by commands/UI flows.
+  - `src/ports/secondary/**`: outbound dependency contracts used by application services/use-cases.
+- **Top-level adapters (`src/adapters/*`)**:
+  - `src/adapters/primary/**`: primary-side adapter logic (tree/webview/command interaction boundaries and payload mapping).
+  - `src/adapters/secondary/**`: secondary-side infrastructure adapters (Azure SDK, VS Code persistence/config/logging/telemetry).
 - **Composition root (`src/extension.ts`)**: dependency wiring and VS Code command registration.
 
 Notable current use-case boundaries:
-- Queue panel message loading and pagination are handled by feature-local application use cases (for example, `src/features/queueMessages/application/LoadQueueMessagesUseCase.ts`) behind primary ports, with UI adapters acting as transport/lifecycle boundaries.
+- Queue panel message loading and pagination are handled by feature-local use cases (for example, `src/features/queueMessages/LoadQueueMessagesUseCase.ts`) behind primary ports, with UI adapters acting as transport/lifecycle boundaries.
 
 ## Runtime Composition
 `src/extension.ts` is the composition root:
@@ -30,11 +33,10 @@ Notable current use-case boundaries:
 This keeps domain logic testable and independent from VS Code/Azure details.
 
 ## Dependency Guardrails
-- Feature-to-feature imports are disallowed by lint policy. Shared contracts must be extracted to `src/shared/**`.
+- Feature-to-feature imports are disallowed by lint policy for feature core layers (except `src/features/common/**` shared contracts).
 - `application` and `ports` layers are SDK/framework-agnostic and must not import VS Code/Azure SDKs or adapter implementations.
-- `adapters` layers are also protected from cross-feature imports; cross-feature collaboration must go through shared contracts or composition-root wiring.
-- Feature ports are interface-only contracts; type aliases and type re-exports are disallowed.
-- Feature port interface method custom parameter/return types must originate from the feature `application` layer.
+- Port files are interface-only contracts; type aliases and type re-exports are disallowed.
+- Port interface method custom parameter/return types must originate from feature modules or local port contracts.
 
 ## Data and Control Flow
 Typical flow for a user action (for example, moving a message):
@@ -51,7 +53,7 @@ Boundary safety notes:
 - Keep parsing/normalization helpers pure where practical, and apply mutations only at boundary layers.
 
 ## Testing Approach
-- **Unit tests (`src/test/features/**/{application,adapters}` and `src/test/shared/**`)** validate feature behavior and shared boundaries.
+- **Unit tests (`src/test/features/**/application/**`, `src/test/features/common/**`, and `src/test/adapters/**`)** validate feature behavior and adapter boundaries.
 - **Extension/integration tests (`src/test/**/**/*.integration.test.ts`)** run through `vscode-test` and focus on production-mode extension smoke wiring plus connection-tree drag/drop adapter integration behavior.
 - **Acceptance tests (`src/test/acceptance/**/*.acceptance.integration.test.ts`)** run user-facing command flows against a real Azure Service Bus namespace using a spec-style DSL.
 
@@ -61,5 +63,5 @@ Acceptance-mode runtime notes:
 
 ## Key Entry Points
 - `src/extension.ts`: activation and dependency wiring.
-- `src/features/connections/adapters/TreeConnectionsAdapter.ts`: tree interactions and command-backed actions.
-- `src/features/queueMessages/adapters/WebviewQueueMessagesPanelAdapter.ts`: queue message webview interactions.
+- `src/adapters/primary/TreeConnectionsAdapter.ts`: tree interactions and command-backed actions.
+- `src/adapters/primary/WebviewQueueMessagesPanelAdapter.ts`: queue message webview interactions.

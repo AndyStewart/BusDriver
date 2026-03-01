@@ -1,16 +1,16 @@
 import * as assert from 'assert';
-import { DeleteMessagesUseCase } from '../../../../features/queueMessages/application/DeleteMessagesUseCase';
-import { ListQueuesUseCase } from '../../../../features/queues/application/ListQueuesUseCase';
-import { MoveMessagesUseCase } from '../../../../features/queueMessages/application/MoveMessagesUseCase';
-import { OpenQueueMessagesUseCase } from '../../../../features/queueMessages/application/OpenQueueMessagesUseCase';
-import { PurgeQueueUseCase } from '../../../../features/queueMessages/application/PurgeQueueUseCase';
-import { MessageDeleter } from '../../../../features/queueMessages/application/MessageDeleter';
-import type { MessageOperationResult, MessageWithSource } from '../../../../features/queueMessages/application/MessageTypes';
-import { MessageMover } from '../../../../features/queueMessages/application/MessageMover';
-import { QueueRegistryService } from '../../../../features/queues/application/QueueRegistryService';
-import type { QueueMessagesPanelGateway } from '../../../../features/queueMessages/ports/QueueMessagesPanelGateway';
-import type { MessageOperations } from '../../../../features/queueMessages/ports/MessageOperations';
-import type { ConnectionLookup } from '../../../../shared/ports/ConnectionLookup';
+import { DeleteMessagesUseCase } from '../../../../features/queueMessages/DeleteMessagesUseCase';
+import { ListQueuesUseCase } from '../../../../features/queues/ListQueuesUseCase';
+import { MoveMessagesUseCase } from '../../../../features/queueMessages/MoveMessagesUseCase';
+import { OpenQueueMessagesUseCase } from '../../../../features/queueMessages/OpenQueueMessagesUseCase';
+import { PurgeQueueUseCase } from '../../../../features/queueMessages/PurgeQueueUseCase';
+import { MessageDeleter } from '../../../../features/queueMessages/MessageDeleter';
+import type { MessageOperationResult, MessageWithSource } from '../../../../features/queueMessages/MessageTypes';
+import { MessageMover } from '../../../../features/queueMessages/MessageMover';
+import { QueueRegistryService } from '../../../../features/queues/QueueRegistryService';
+import type { QueueMessagesPanelGateway } from '../../../../ports/secondary/QueueMessagesPanelGateway';
+import type { MessageOperations } from '../../../../ports/secondary/MessageOperations';
+import type { ConnectionLookup } from '../../../../ports/secondary/ConnectionLookup';
 
 describe('Application use cases', () => {
     it('MoveMessagesUseCase delegates to MessageMover', async () => {

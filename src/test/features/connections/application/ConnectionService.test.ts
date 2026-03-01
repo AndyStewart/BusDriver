@@ -1,6 +1,6 @@
 import * as assert from 'assert';
-import { ConnectionService } from '../../../../features/connections/application/ConnectionService';
-import { InMemoryConnectionRepository } from '../../../shared/fakes/InMemoryConnectionRepository';
+import { ConnectionService } from '../../../../features/connections/ConnectionService';
+import { InMemoryConnectionRepository } from '../../common/fakes/InMemoryConnectionRepository';
 
 describe('ConnectionService', () => {
     it('adds a connection with trimmed values', async () => {
