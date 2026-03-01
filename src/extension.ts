@@ -384,38 +384,38 @@ export function activate(context: vscode.ExtensionContext) {
             ),
             vscode.commands.registerCommand(
                 'busdriver.__test.listConnections',
-                async () => {
+                () => {
                     return connectionService.listConnections();
                 }
             ),
             vscode.commands.registerCommand(
                 'busdriver.__test.setQueueCatalog',
-                async (payload: { entries: AcceptanceQueueEntry[] | undefined }) => {
+                (payload: { entries: AcceptanceQueueEntry[] | undefined }) => {
                     acceptanceRuntime.queueCatalog = payload.entries;
                 }
             ),
             vscode.commands.registerCommand(
                 'busdriver.__test.setCommandOverrides',
-                async (payload: { scopeId?: string; overrides?: AcceptanceCommandOverrides }) => {
+                (payload: { scopeId?: string; overrides?: AcceptanceCommandOverrides }) => {
                     const scopeId = payload.scopeId ?? getAcceptanceScopeId();
                     acceptanceRuntime.commandOverridesByScope.set(scopeId, payload.overrides ?? {});
                 }
             ),
             vscode.commands.registerCommand(
                 'busdriver.__test.getOpenQueuePanel',
-                async () => {
+                () => {
                     return QueueMessagesPanel.getCurrentPanelQueue();
                 }
             ),
             vscode.commands.registerCommand(
                 'busdriver.__test.closeQueuePanel',
-                async () => {
+                () => {
                     QueueMessagesPanel.currentPanel?.dispose();
                 }
             ),
             vscode.commands.registerCommand(
                 'busdriver.__test.resetCommandOverrides',
-                async (payload?: { scopeId?: string }) => {
+                (payload?: { scopeId?: string }) => {
                     const scopeId = payload?.scopeId ?? getAcceptanceScopeId();
                     acceptanceRuntime.commandOverridesByScope.delete(scopeId);
                 }

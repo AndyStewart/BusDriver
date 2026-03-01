@@ -13,9 +13,9 @@ export class VsCodeMessageGridColumnsRepository implements MessageGridColumnsRep
         private readonly configurationTarget: unknown
     ) {}
 
-    async getPropertyColumns(): Promise<unknown> {
+    getPropertyColumns(): Promise<unknown> {
         const config = this.getConfiguration();
-        return config.get('messageGrid.propertyColumns');
+        return Promise.resolve(config.get('messageGrid.propertyColumns'));
     }
 
     async setPropertyColumns(columns: string[]): Promise<void> {
