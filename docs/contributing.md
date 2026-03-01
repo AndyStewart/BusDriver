@@ -34,8 +34,7 @@ Integration tests are required for PRs that introduce new code or modify integra
 
 Integration-relevant changes typically include:
 - command registration, activation, or extension wiring (`src/extension.ts`)
-- UI orchestration and command handlers (`src/features/**/adapters/**`)
-- adapter behavior that affects VS Code or Azure runtime interactions (`src/features/**/adapters/**`, `src/shared/adapters/**`)
+- drag/drop adapter behavior in the connections tree (`src/features/connections/adapters/**`)
 - changes to test/build wiring that affects extension runtime behavior (`package.json`, `tsconfig.json`, `esbuild.js`)
 
 Integration tests are usually not required for:
@@ -43,6 +42,10 @@ Integration tests are usually not required for:
 - isolated refactors that do not alter integration-relevant behavior
 
 When unsure, prefer adding or running the integration test.
+
+Current integration suite focus:
+- production-mode extension smoke checks (activation, command registration, command guards, deactivation safety)
+- connection-tree drag/drop adapter integration paths
 
 ## Quality Gates (Must Pass)
 Before opening or merging a PR, all of the following must pass:
@@ -63,6 +66,11 @@ If your change is not integration-relevant, `npm run test:unit` is the minimum r
 
 ## Acceptance Tests (Azure Service Bus Namespace Required)
 Acceptance tests validate exposed user-facing command flows against a real Service Bus backend and are written as specification-style scenarios under `src/test/acceptance/**`.
+
+Current acceptance suite focus:
+- user-visible command flows (open, move, delete, purge, connection management, column configuration)
+- queue messages panel lifecycle and queue-switch behavior
+- queue messages panel HTML safety contract checks
 
 Local command:
 ```bash

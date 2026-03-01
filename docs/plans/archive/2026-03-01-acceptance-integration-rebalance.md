@@ -2,7 +2,7 @@
 
 - Date: 2026-03-01
 - Owner: Codex
-- Status: In Progress
+- Status: Completed
 
 ## Goal
 Rebalance test strategy by moving user-facing integration coverage into acceptance tests where practical, while keeping a minimal integration suite for coverage acceptance cannot reliably provide.
@@ -199,6 +199,8 @@ This preserves confidence while reducing overlap and avoiding a brittle push tow
 - 2026-03-01 16:37 - Validation for Slice 5: `npm run compile-tests`, `npm run test:integration`, and `npm run test:acceptance` passed (10 acceptance tests).
 - 2026-03-01 16:40 - Slice 6 implemented: added acceptance HTML contract scenario with a test-only panel HTML probe and removed matching integration HTML assertion.
 - 2026-03-01 16:43 - Validation for Slice 6: `npm run test:integration` and `npm run test:acceptance` passed (11 acceptance tests).
+- 2026-03-01 16:45 - Slice 7 complete: retained integration coverage for production-mode extension smoke and connections drag/drop adapter behavior.
+- 2026-03-01 16:48 - Slice 8 complete: updated `docs/contributing.md` and `docs/architecture.md`; lint/build/unit/integration/acceptance checks passed.
 
 ## Decisions and Notes
 - Initial decision: do not remove integration tests until acceptance parity is proven for each mapped assertion.
@@ -206,15 +208,25 @@ This preserves confidence while reducing overlap and avoiding a brittle push tow
 - Migration rule: each slice must move exactly one assertion and remove at most one matching integration assertion in the same change.
 
 ## Validation
-- [ ] Lint passes
-- [ ] Build/compile passes
-- [ ] Tests pass
-- [ ] Docs updated (`docs/product.md`, `docs/architecture.md`, `docs/adr/`, `docs/contributing.md` as applicable)
-- [ ] Each completed slice is independently deployable and testable
-- [ ] Per-slice documentation and plan-maintenance fields were reviewed and applied
+- [x] Lint passes
+- [x] Build/compile passes
+- [x] Tests pass
+- [x] Docs updated (`docs/product.md`, `docs/architecture.md`, `docs/adr/`, `docs/contributing.md` as applicable)
+- [x] Each completed slice is independently deployable and testable
+- [x] Per-slice documentation and plan-maintenance fields were reviewed and applied
 
 ## Outcome
-Summarize what shipped and link related PR/issues/files.
+- Migrated user-facing integration assertions into acceptance one test at a time:
+- `showQueueMessages` missing-connection guard
+- `moveMessageToQueue` no-target-queues guard
+- queue panel open/switch/close lifecycle
+- queue panel HTML safety contract
+- Retained integration coverage for:
+- production-mode extension smoke checks in `src/test/integration/extension.integration.test.ts`
+- connection-tree drag/drop integration checks in `src/test/features/connections/integration/ConnectionsProvider.integration.test.ts`
+- Updated docs to reflect final boundaries.
 
 ## Lessons Learned
-- To be filled during execution and finalized before plan archival.
+- One-test-at-a-time migration kept risk low and made regressions easy to isolate.
+- Acceptance HTML contract checks needed a render wait to avoid transient false negatives.
+- Keeping a slim integration suite for production-mode smoke and drag/drop internals avoids acceptance harness blind spots.
